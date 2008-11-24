@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>pt.cguimaraes.sstftp</groupId>
 		<artifactId>sstftp</artifactId>
-		<version>0.1</version>
+		<version>0.2</version>
 	</parent>
 
 	<name>sstftp-library</name>

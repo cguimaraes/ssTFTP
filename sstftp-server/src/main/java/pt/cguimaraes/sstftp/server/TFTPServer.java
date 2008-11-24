@@ -25,178 +25,57 @@
 
 package pt.cguimaraes.sstftp.server;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.SocketException;
-import java.util.logging.Level;
+import java.net.UnknownHostException;
 import java.util.logging.Logger;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.GnuParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.OptionBuilder;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
-
-import pt.cguimaraes.sstftp.message.ErrorMessage;
-import pt.cguimaraes.sstftp.message.ReadRequestMessage;
 import pt.cguimaraes.sstftp.message.TFTPMessage;
-import pt.cguimaraes.sstftp.message.WriteRequestMessage;
 import pt.cguimaraes.sstftp.socket.TFTPSocket;
 
 public class TFTPServer extends Thread {
 
-	private static TFTPSocket socket;
-	private static String localDir;
+	private TFTPSocket socket;
+
+	private String localDir;
+	private int retries;
+	private int timeout;
+	private int blksize;
+
+	public TFTPServer(int port, String localDir, int retries, int timeout, int blksize) throws SocketException, NoSuchMethodException, SecurityException, UnknownHostException {
+		this.localDir = localDir;
+		this.retries  = retries;
+		this.timeout  = timeout;
+		this.blksize  = blksize;
+
+		Method handler = TFTPServer.class.getMethod("handler", new Class[]{TFTPMessage.class});
+
+		socket = new TFTPSocket(this, handler);
+		socket.bind(InetAddress.getByName("0.0.0.0"), port);
+		socket.setRetries(retries);
+		socket.setTimeout(timeout);
+
+		Thread t = new Thread(socket);
+        t.start();
+	}
 
 	public void send(TFTPMessage msg) {
 		try {
 			socket.send(msg);
 		} catch (IOException e) {
-			Logger.getGlobal().severe("Socket exception");
+			Logger.getGlobal().severe(e.getMessage());
 		}
 	}
 
 	// Generic TFTP message handler
-	public void handler(TFTPMessage msg) throws SocketException, NoSuchMethodException, SecurityException {
+	public void handler(TFTPMessage msg) throws IOException, NoSuchMethodException, SecurityException, SocketException {
 		ServerSession session = null;
-		switch(msg.getOpcode()) {
-			case TFTPMessage.RRQ: {
-				ReadRequestMessage msgRRQ = (ReadRequestMessage) msg;
-				session = new ServerSession(localDir, msgRRQ.getFileName(), msgRRQ.getMode(), 0, msgRRQ.getPort(), msgRRQ.getIp(), (short)msgRRQ.getOpcode());
-			} break;
 
-			case TFTPMessage.WRQ: {
-				WriteRequestMessage msgWRQ = (WriteRequestMessage) msg;
-				session = new ServerSession(localDir, msgWRQ.getFileName(), msgWRQ.getMode(), 1, msgWRQ.getPort(), msgWRQ.getIp(), (short)msgWRQ.getOpcode());
-			} break;
+		session = new ServerSession(localDir, retries, timeout, blksize, msg);
 
-			default: {
-				ErrorMessage msgError = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
-				send(msgError);
-
-				return;
-			}
-		}
-
-		if(session != null)
+		if(session.isInitialized())
 			session.start();
-	}
-
-	@SuppressWarnings("static-access")
-	public static void main(String args[]) throws Exception
-	{
-		Logger logger = Logger.getLogger("sstftp-server");
-		logger.setLevel(Level.ALL);
-
-		// create the Options
-		Options options = new Options();
-		options.addOption(OptionBuilder.withLongOpt("help")
-				.withDescription("print this message")
-				.create('h'));
-		options.addOption(OptionBuilder.withLongOpt("port")
-				.withDescription("listening port (default: 69)")
-				.hasArgs(1)
-				.create('p'));
-		options.addOption(OptionBuilder.withLongOpt("directory")
-				.withDescription("path to the directory that contains the files")
-				.hasArgs(1)
-				.isRequired()
-				.create('d'));
-		options.addOption(OptionBuilder.withLongOpt("retries")
-				.withDescription("maximum retries (default: 3)")
-				.hasArgs(1)
-				.create('r'));
-		options.addOption(OptionBuilder.withLongOpt("timeout")
-				.withDescription("timeout to retransmissions (ms) (default: 2000)")
-				.hasArgs(1)
-				.create('t'));
-		options.addOption(OptionBuilder.withLongOpt("log")
-				.withDescription("Log level [0-2] (default: 1)")
-				.hasArgs(1)
-				.create('l'));
-
-		int port = 69;
-		int retries = -1;
-		int timeout = -1;
-
-		try {
-			CommandLineParser parser = new GnuParser();
-			CommandLine line = parser.parse(options, args);
-
-			// If help is defined
-			if(line.hasOption('h')) {
-				HelpFormatter formatter = new HelpFormatter();
-				formatter.printHelp(80, "sstftp ", "", options, "", true);
-				System.exit(0);
-			}
-
-			// Parse action
-			localDir = line.getOptionValue('d').toLowerCase();
-			if(!new File(localDir).exists())
-				throw new ParseException("Local directory does not exist");
-
-			// Parse port number
-			if(line.hasOption('p')) {
-				port = Integer.parseInt(line.getOptionValue('p'));
-				if(port < 0 || port > 65535)
-					throw new ParseException("Invalid port number");
-			}
-
-			// Parse maximum retries
-			if(line.hasOption('r')) {
-				port = Integer.parseInt(line.getOptionValue('r'));
-				if(port < 0)
-					throw new ParseException("Invalid maximum retries value");
-			}
-
-			// Parse timeout to retransmissions
-			if(line.hasOption('t')) {
-				port = Integer.parseInt(line.getOptionValue('t'));
-				if(port < 0)
-					throw new ParseException("Invalid timeout to retransmissions");
-			}
-
-			// Parse log level
-			logger.setLevel(Level.ALL); // Default log level
-			if(line.hasOption('l')) {
-				switch (Integer.parseInt(line.getOptionValue('l'))) {
-				case 0:
-					logger.setLevel(Level.OFF);
-					break;
-				case 1:
-					logger.setLevel(Level.INFO);
-					break;
-				case 2:
-					logger.setLevel(Level.ALL);
-					break;
-				default:
-					throw new ParseException("Invalid log level");
-				}
-			}
-
-		} catch (ParseException e) {
-			logger.severe(e.getMessage());
-
-			HelpFormatter formatter = new HelpFormatter();
-			formatter.printHelp(80, "sstftp-server ", "", options, "", true);
-			System.exit(1);
-		}
-
-		TFTPServer server = new TFTPServer();
-        Method handler = TFTPServer.class.getMethod("handler", new Class[]{TFTPMessage.class});
-
-		socket = new TFTPSocket(server, handler);
-		socket.bind(InetAddress.getByName("0.0.0.0"), port);
-		if(retries != -1)
-			socket.setRetries(retries);
-		if(timeout != -1)
-			socket.setTimeout(timeout);
-
-		Thread t = new Thread(socket);
-        t.start();
 	}
 }

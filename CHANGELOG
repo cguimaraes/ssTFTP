@@ -1,0 +1,8 @@
+ssTFTP v0.2 (24-11-2008):
+ -> Support for TFTP Option Extension (RFC 2347)
+ -> Support for TFTP Blocksize Option (RFC 2348)
+ -> Refactor client and server to ease their configuration
+ -> Several bug fixes
+
+ssTFTP v0.1 (20-11-2008):
+ -> Implementation of TFTP client and server according to the standard RFC 1350

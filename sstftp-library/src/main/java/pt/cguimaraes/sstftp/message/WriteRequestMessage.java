@@ -28,19 +28,24 @@ package pt.cguimaraes.sstftp.message;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.net.InetAddress;
+import java.util.HashMap;
+import java.util.Map.Entry;
 
 public class WriteRequestMessage extends TFTPMessage {
 
 	private String fileName;
 	private String mode;
+	private HashMap<String, String> options;
 
 	public WriteRequestMessage() {
 		super();
 		this.opcode = WRQ;
+		this.options = new HashMap<String, String>();
 	}
 
 	public WriteRequestMessage(InetAddress address, int port) {
 		super(address, port);
+		this.options = new HashMap<String, String>();
 	}
 
 	public WriteRequestMessage(String fileName, String mode) {
@@ -48,6 +53,15 @@ public class WriteRequestMessage extends TFTPMessage {
 		this.opcode = WRQ;
 		this.fileName = fileName;
 		this.mode = mode;
+		this.options = new HashMap<String, String>();
+	}
+
+	public WriteRequestMessage(String fileName, String mode, HashMap<String, String> options) {
+		super();
+		this.opcode = WRQ;
+		this.fileName = fileName;
+		this.mode = mode;
+		this.options = options;
 	}
 
 	public void toBytes(ByteArrayOutputStream stream) {
@@ -59,6 +73,16 @@ public class WriteRequestMessage extends TFTPMessage {
 		tmp = mode.getBytes();
 		stream.write(tmp, 0, tmp.length);
 		stream.write(0);
+
+		for(Entry<String, String> entry : options.entrySet()) {
+		    tmp = entry.getKey().getBytes();
+		    stream.write(tmp, 0, tmp.length);
+			stream.write(0);
+
+			tmp = entry.getValue().getBytes();
+			stream.write(tmp, 0, tmp.length);
+			stream.write(0);
+		}
 	}
 
 	public void fromBytes(ByteArrayInputStream stream) {
@@ -76,6 +100,25 @@ public class WriteRequestMessage extends TFTPMessage {
 			strBuilder.append((char)tmp);
 		}
 		mode = strBuilder.toString();
+
+		while(stream.available() > 0) {
+			String opt;
+			String value;
+
+			strBuilder = new StringBuilder();
+			while((tmp = (byte) stream.read()) != 0x00) {
+				strBuilder.append((char)tmp);
+			}
+			opt = strBuilder.toString();
+
+			strBuilder = new StringBuilder();
+			while((tmp = (byte) stream.read()) != 0x00) {
+				strBuilder.append((char)tmp);
+			}
+			value = strBuilder.toString();
+
+			options.put(opt, value);
+		}
 	}
 
 	public String getFileName() {
@@ -92,5 +135,17 @@ public class WriteRequestMessage extends TFTPMessage {
 
 	public void setMode(String mode) {
 		this.mode = mode;
+	}
+
+	public HashMap<String, String> getOptions() {
+		return options;
+	}
+
+	public void setOptions(HashMap<String, String> options) {
+		this.options = options;
+	}
+
+	public void setOption(String opt, String value) {
+		options.put(opt, value);
 	}
 }

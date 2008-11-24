@@ -41,6 +41,7 @@ import java.util.TimerTask;
 import pt.cguimaraes.sstftp.message.AcknowledgeMessage;
 import pt.cguimaraes.sstftp.message.DataMessage;
 import pt.cguimaraes.sstftp.message.ErrorMessage;
+import pt.cguimaraes.sstftp.message.OptionAcknowledgeMessage;
 import pt.cguimaraes.sstftp.message.ReadRequestMessage;
 import pt.cguimaraes.sstftp.message.TFTPMessage;
 import pt.cguimaraes.sstftp.message.WriteRequestMessage;
@@ -200,6 +201,14 @@ public class TFTPSocket implements Runnable {
 					ErrorMessage msgError = new ErrorMessage(recvPacket.getAddress(), recvPacket.getPort());
 					msgError.fromBytes(new ByteArrayInputStream(recvPacket.getData(), 0, recvPacket.getLength()));
 					msg = msgError;
+				} break;
+
+				case TFTPMessage.OACK: {
+					timer.cancel();
+
+					OptionAcknowledgeMessage msgOAck = new OptionAcknowledgeMessage(recvPacket.getAddress(), recvPacket.getPort());
+					msgOAck.fromBytes(new ByteArrayInputStream(recvPacket.getData(), 0, recvPacket.getLength()));
+					msg = msgOAck;
 				} break;
 
 				default:

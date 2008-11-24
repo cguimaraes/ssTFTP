@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>pt.cguimaraes.sstftp</groupId>
 		<artifactId>sstftp</artifactId>
-		<version>0.1</version>
+		<version>0.2</version>
 	</parent>
 
 	<name>sstftp-client</name>
@@ -43,7 +43,7 @@
 						<manifest>
 							<addClasspath>true</addClasspath>
 							<classpathPrefix>${project.build.directory}/lib/</classpathPrefix>
-							<mainClass>pt.cguimaraes.sstftp.client.TFTPClient</mainClass>
+							<mainClass>pt.cguimaraes.sstftp.client.Main</mainClass>
 						</manifest>
 					</archive>
 				</configuration>

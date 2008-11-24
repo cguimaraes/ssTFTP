@@ -5,7 +5,7 @@
 	<groupId>pt.cguimaraes.sstftp</groupId>
 	<artifactId>sstftp</artifactId>
 	<packaging>pom</packaging>
-	<version>0.1</version>
+	<version>0.2</version>
 
 	<name>sstftp</name>
 	<description>ssTFTP Project</description>

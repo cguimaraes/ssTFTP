@@ -9,9 +9,12 @@ ssTFTP is a Trivial File Transfer Protocol (TFTP) client and server
 implementations in JAVA. It was developed for a class in 2008, which I
 decided to revive and improve.
 
-The current version (v0.1 beta) implements the TFTP client and server according
-to the standard RFC 1350. TFTP Options are not supported in the current version,
-being planned for future releases.
+The current version (v0.2 beta) implements the TFTP client and server according
+to the standard RFC 1350. TFTP Option Extension, according standard RFC 2347,
+is implemented:
+   -> TFTP Blocksize Option (RFC 2348)
+
+For more info, please check CHANGELOG file.
 
 Requirements
 ------------

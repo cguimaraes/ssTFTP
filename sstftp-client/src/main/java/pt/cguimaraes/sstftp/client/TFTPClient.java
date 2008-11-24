@@ -25,31 +25,25 @@
 
 package pt.cguimaraes.sstftp.client;
 
-import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
+import java.net.SocketException;
 import java.nio.channels.Channels;
 import java.util.Arrays;
-import java.util.Scanner;
-import java.util.logging.Level;
+import java.util.HashMap;
+import java.util.Map.Entry;
 import java.util.logging.Logger;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.GnuParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.OptionBuilder;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.commons.net.io.FromNetASCIIOutputStream;
 import org.apache.commons.net.io.ToNetASCIIInputStream;
 
 import pt.cguimaraes.sstftp.message.AcknowledgeMessage;
 import pt.cguimaraes.sstftp.message.DataMessage;
 import pt.cguimaraes.sstftp.message.ErrorMessage;
+import pt.cguimaraes.sstftp.message.OptionAcknowledgeMessage;
 import pt.cguimaraes.sstftp.message.ReadRequestMessage;
 import pt.cguimaraes.sstftp.message.TFTPMessage;
 import pt.cguimaraes.sstftp.message.WriteRequestMessage;
@@ -57,30 +51,64 @@ import pt.cguimaraes.sstftp.socket.TFTPSocket;
 
 public class TFTPClient {
 
-	private static TFTPSocket socket;
-	private static int bSize;
-	private static String mode;
-	private static String fileName;
-	private static RandomAccessFile file;
-	private static boolean sentLast = false;
+	private TFTPSocket socket;
+
+	private String action;
+	private String mode;
+	private int blksize;
+	private HashMap<String, String> options;
+
+	private RandomAccessFile file;
+	private boolean sentLast = false;
+
+	public TFTPClient(InetAddress dstIp, int dstPort, String action, String mode, String path,
+			int retries, int timeout, int blksize, HashMap<String, String> options) throws NoSuchMethodException, SecurityException, SocketException, FileNotFoundException {
+
+		this.action   = action;
+		this.mode     = mode;
+		this.blksize  = blksize;
+		this.options  = options;
+
+		Method handler = null;
+		if (action.equals("put"))
+			handler = TFTPClient.class.getMethod("handler_put", new Class[]{TFTPMessage.class});
+		else if (action.equals("get"))
+			handler = TFTPClient.class.getMethod("handler_get", new Class[]{TFTPMessage.class});
+
+		socket = new TFTPSocket(dstIp, dstPort, this, handler);
+		socket.setRetries(retries);
+		socket.setTimeout(timeout);
+
+		Thread t = new Thread(socket);
+        t.start();
+
+		if (action.equals("put")) {
+			WriteRequestMessage msgWRQ = new WriteRequestMessage(path, mode, options);
+			send(msgWRQ);
+			file = new RandomAccessFile(path, "r");
+
+			Logger.getGlobal().info("Uploading " + path + " to server in " + mode + " mode...");
+		} else if (action.equals("get")) {
+			ReadRequestMessage msgRRQ = new ReadRequestMessage(path, mode, options);
+			send(msgRRQ);
+
+			file = new RandomAccessFile(path, "rw");
+			Logger.getGlobal().info("Downloading " + path + " from server in " + mode + " mode...");
+		}
+	}
 
 	public void send(TFTPMessage msg) {
 		try {
 			socket.send(msg);
 		} catch (IOException e) {
-			Logger.getGlobal().severe("Socket exception");
+			Logger.getGlobal().severe(e.getMessage());
 			System.exit(1);
 		}
 	}
 
-	// Generic TFTP message handler
-	public void handler(TFTPMessage msg) {
+	// TFTP message handler for PUT action
+	public void handler_put(TFTPMessage msg) {
 		switch(msg.getOpcode()) {
-			case TFTPMessage.DATA: {
-				DataMessage msgData = (DataMessage) msg;
-				handleData(msgData);
-			} break;
-
 			case TFTPMessage.ACK: {
 				AcknowledgeMessage msgAck = (AcknowledgeMessage) msg;
 				handleAcknowledge(msgAck);
@@ -89,6 +117,40 @@ public class TFTPClient {
 			case TFTPMessage.ERROR: {
 				ErrorMessage msgError = (ErrorMessage) msg;
 				handleError(msgError);
+			} break;
+
+			case TFTPMessage.OACK: {
+				OptionAcknowledgeMessage msgOAck = (OptionAcknowledgeMessage) msg;
+				handleOptionAcknowledge(msgOAck, action);
+			} break;
+
+			default: {
+				ErrorMessage msgError = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
+				send(msgError);
+
+				Logger.getGlobal().warning("Illegal TFTP Operation");
+				System.exit(1);
+				break;
+			}
+		}
+	}
+
+	// TFTP message handler for GET action
+	public void handler_get(TFTPMessage msg) {
+		switch(msg.getOpcode()) {
+			case TFTPMessage.DATA: {
+				DataMessage msgData = (DataMessage) msg;
+				handleData(msgData);
+			} break;
+
+			case TFTPMessage.ERROR: {
+				ErrorMessage msgError = (ErrorMessage) msg;
+				handleError(msgError);
+			} break;
+
+			case TFTPMessage.OACK: {
+				OptionAcknowledgeMessage msgOAck = (OptionAcknowledgeMessage) msg;
+				handleOptionAcknowledge(msgOAck, action);
 			} break;
 
 			default: {
@@ -125,7 +187,7 @@ public class TFTPClient {
 		send(msgAck);
 
 		// If data length lower than block size, transfer is complete
-		if(msgData.getData().length < bSize) {
+		if(msgData.getData().length < blksize) {
 			Logger.getGlobal().info("Transfer complete");
 			System.exit(0);
 		}
@@ -133,7 +195,7 @@ public class TFTPClient {
 
 	// Handle TFTP Acknowledge message: send data to server
 	private void handleAcknowledge(AcknowledgeMessage msgAck) {
-		byte[] b = new byte[bSize];
+		byte[] b = new byte[blksize];
 
 		try {
 			int n = -1;
@@ -149,7 +211,7 @@ public class TFTPClient {
 			// If data to send is lower than block size, transfer is complete
 			// Note: transfer is only complete when acknowledge to the last
 			//       TFTP Data message is received
-			if (n < bSize) {
+			if (n < blksize) {
 				if(!sentLast) {
 					sentLast = true;
 
@@ -181,182 +243,32 @@ public class TFTPClient {
 		System.exit(0);
 	}
 
-	@SuppressWarnings("static-access")
-	public static void main(String args[]) throws Exception
-	{
-		Logger logger = Logger.getLogger("sstftp-client");
+	// Handle TFTP Option Acknowledge message
+	private void handleOptionAcknowledge(OptionAcknowledgeMessage msgOAck, String action) {
+		HashMap<String, String> optionsOAck = msgOAck.getOptions();
 
-		// create the Options
-		Options options = new Options();
-		options.addOption(OptionBuilder.withLongOpt("help")
-				.withDescription("print this message")
-				.create('h'));
-		options.addOption(OptionBuilder.withLongOpt("mode")
-				.withDescription("specifies file transfer mode (default: octet)")
-				.hasArgs(1)
-				.withArgName("octet|netascii")
-				.create('m'));
-		options.addOption(OptionBuilder.withLongOpt("server")
-				.withDescription("server host")
-				.hasArgs(1)
-				.isRequired()
-				.create('s'));
-		options.addOption(OptionBuilder.withLongOpt("port")
-				.withDescription("server port (default: 69)")
-				.hasArgs(1)
-				.create('p'));
-		options.addOption(OptionBuilder.withLongOpt("file")
-				.withDescription("filename")
-				.hasArgs(1)
-				.isRequired()
-				.create('f'));
-		options.addOption(OptionBuilder.withLongOpt("action")
-				.withDescription("action to perform")
-				.hasArgs(1)
-				.withArgName("get|put")
-				.isRequired()
-				.create('a'));
-		options.addOption(OptionBuilder.withLongOpt("retries")
-				.withDescription("maximum retries (default: 3)")
-				.hasArgs(1)
-				.create('r'));
-		options.addOption(OptionBuilder.withLongOpt("timeout")
-				.withDescription("timeout to retransmissions (ms) (default: 2000)")
-				.hasArgs(1)
-				.create('t'));
-		options.addOption(OptionBuilder.withLongOpt("log")
-				.withDescription("Log level [0-2] (default: 1)")
-				.hasArgs(1)
-				.create('l'));
+		for(Entry<String, String> entry : optionsOAck.entrySet()) {
+			// Process only options which negotiation was requested
+			if(options.containsKey(entry.getKey())) {
+				switch(entry.getKey()) {
+					case "blksize": {
+						blksize = Integer.parseInt(entry.getValue());
+					} break;
 
-		String action = "";
-		InetAddress ipAddress = null;
-		int port = 69;
-		int retries = -1;
-		int timeout = -1;
-
-		try {
-			CommandLineParser parser = new GnuParser();
-			CommandLine line = parser.parse(options, args);
-
-			// If help is defined
-			if(line.hasOption('h')) {
-				HelpFormatter formatter = new HelpFormatter();
-				formatter.printHelp(80, "sstftp ", "", options, "", true);
-				System.exit(0);
-			}
-
-			// Parse action
-			action = line.getOptionValue('a').toLowerCase();
-			if(!action.equals("get") && !action.equals("put"))
-				throw new ParseException("Invalid action");
-
-			// Parse mode
-			mode = line.getOptionValue('m').toLowerCase();
-			if(!mode.equals("octet") && !mode.equals("netascii"))
-				throw new ParseException("Invalid mode");
-
-			// Parse hostname
-			try {
-				ipAddress = InetAddress.getByName(line.getOptionValue('s'));
-			} catch (UnknownHostException e) {
-				throw new ParseException("Could not find hostname");
-			}
-
-			// Parse fileName
-			fileName = line.getOptionValue('f');
-
-			// Parse port number
-			if(line.hasOption('p')) {
-				port = Integer.parseInt(line.getOptionValue('p'));
-				if(port < 0 || port > 65535)
-					throw new ParseException("Invalid port number");
-			}
-
-			// Parse maximum retries
-			if(line.hasOption('r')) {
-				port = Integer.parseInt(line.getOptionValue('r'));
-				if(port < 0)
-					throw new ParseException("Invalid maximum retries value");
-			}
-
-			// Parse timeout to retransmissions
-			if(line.hasOption('t')) {
-				port = Integer.parseInt(line.getOptionValue('t'));
-				if(port < 0)
-					throw new ParseException("Invalid timeout to retransmissions");
-			}
-
-			// Parse log level
-			logger.setLevel(Level.ALL); // Default log level
-			if(line.hasOption('l')) {
-				switch (Integer.parseInt(line.getOptionValue('l'))) {
-				case 0:
-					logger.setLevel(Level.OFF);
-					break;
-				case 1:
-					logger.setLevel(Level.INFO);
-					break;
-				case 2:
-					logger.setLevel(Level.ALL);
-					break;
-				default:
-					throw new ParseException("Invalid log level");
+					default:
+						// Option not supported
+						optionsOAck.remove(entry.getKey());
 				}
 			}
-
-		} catch (ParseException e) {
-			logger.severe(e.getMessage());
-
-			HelpFormatter formatter = new HelpFormatter();
-			formatter.printHelp(80, "sstftp-client ", "", options, "", true);
-			System.exit(1);
 		}
 
-		if(action.equals("put")) {
-			File f = new File(fileName);
-			if (!f.exists() || !f.canRead()) {
-				logger.severe("File does not exists or cannot be opened");
-				System.exit(1);
-			}
-			file = new RandomAccessFile(fileName, "r");
-		} else if(action.equals("get")) {
-			File f = new File(fileName);
-			if (f.exists()) {
-				logger.severe(fileName + " already exists. Override [Y/n]? ");
-				@SuppressWarnings("resource")
-				String input = new Scanner(System.in).next();
-				if (input.toLowerCase().charAt(0) != 'y')
-					System.exit(0);
-			}
-			file = new RandomAccessFile(fileName, "rw");
-		}
-
-		// Parse block size
-		bSize = 512; // Default block size
-
-		TFTPClient client = new TFTPClient();
-        Method handler = TFTPClient.class.getMethod("handler", new Class[]{TFTPMessage.class});
-
-		socket = new TFTPSocket(ipAddress, port, client, handler);
-		if(retries != -1)
-			socket.setRetries(retries);
-		if(timeout != -1)
-			socket.setTimeout(timeout);
-
-		Thread t = new Thread(socket);
-        t.start();
-
-		if (action.equals("put")) {
-			WriteRequestMessage msgWRQ = new WriteRequestMessage(fileName, mode);
-			client.send(msgWRQ);
-
-			logger.info("Uploading " + fileName + " to server in " + mode + " mode...");
-		} else if (action.equals("get")) {
-			ReadRequestMessage msgRRQ = new ReadRequestMessage(fileName, mode);
-			client.send(msgRRQ);
-
-			logger.info("Downloading " + fileName + " from server in " + mode + " mode...");
+		if(action.compareTo("get") == 0) {
+			AcknowledgeMessage ackMsg = new AcknowledgeMessage(0);
+			send(ackMsg);
+		} else if(action.compareTo("put") == 0) {
+			// Fake acknowledge message to start sending the file
+			AcknowledgeMessage ackMsg = new AcknowledgeMessage(0);
+			handleAcknowledge(ackMsg);
 		}
 	}
 }

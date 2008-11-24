@@ -1,5 +1,5 @@
 //=============================================================================
-// Brief     : Read Request Message
+// Brief     : Acknowledge Message
 // Author(s) : Carlos Guimarães <carlos.em.guimaraes@gmail.com>
 // ----------------------------------------------------------------------------
 // ssTFTP - Open Trivial File Transfer Protocol
@@ -31,49 +31,31 @@ import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
-public class ReadRequestMessage extends TFTPMessage {
+public class OptionAcknowledgeMessage extends TFTPMessage {
 
-	private String fileName;
-	private String mode;
 	private HashMap<String, String> options;
 
-	public ReadRequestMessage() {
+	public OptionAcknowledgeMessage() {
 		super();
-		this.opcode = RRQ;
+		this.opcode = OACK;
 		this.options = new HashMap<String, String>();
 	}
 
-	public ReadRequestMessage(InetAddress address, int port) {
+	public OptionAcknowledgeMessage(InetAddress address, int port) {
 		super(address, port);
 		this.options = new HashMap<String, String>();
 	}
 
-	public ReadRequestMessage(String fileName, String mode) {
+	public OptionAcknowledgeMessage(HashMap<String, String> options) {
 		super();
-		this.opcode = RRQ;
-		this.fileName = fileName;
-		this.mode = mode;
-		this.options = new HashMap<String, String>();
-	}
-
-	public ReadRequestMessage(String fileName, String mode, HashMap<String, String> options) {
-		super();
-		this.opcode = RRQ;
-		this.fileName = fileName;
-		this.mode = mode;
+		this.opcode = OACK;
 		this.options = options;
 	}
 
 	public void toBytes(ByteArrayOutputStream stream) {
 		super.toBytes(stream);
 
-		byte[] tmp = fileName.getBytes();
-		stream.write(tmp, 0, tmp.length);
-		stream.write(0);
-		tmp = mode.getBytes();
-		stream.write(tmp, 0, tmp.length);
-		stream.write(0);
-
+		byte[] tmp;
 		for(Entry<String, String> entry : options.entrySet()) {
 		    tmp = entry.getKey().getBytes();
 		    stream.write(tmp, 0, tmp.length);
@@ -88,18 +70,8 @@ public class ReadRequestMessage extends TFTPMessage {
 	public void fromBytes(ByteArrayInputStream stream) {
 		super.fromBytes(stream);
 
-		StringBuilder strBuilder = new StringBuilder();
 		byte tmp;
-		while((tmp = (byte) stream.read()) != 0x00) {
-			strBuilder.append((char)tmp);
-		}
-		fileName = strBuilder.toString();
-
-		strBuilder = new StringBuilder();
-		while((tmp = (byte) stream.read()) != 0x00) {
-			strBuilder.append((char)tmp);
-		}
-		mode = strBuilder.toString();
+		StringBuilder strBuilder = new StringBuilder();
 
 		while(stream.available() > 0) {
 			String opt;
@@ -119,22 +91,6 @@ public class ReadRequestMessage extends TFTPMessage {
 
 			options.put(opt, value);
 		}
-	}
-
-	public String getFileName() {
-		return fileName;
-	}
-
-	public void setFileName(String fileName) {
-		this.fileName = fileName;
-	}
-
-	public String getMode() {
-		return mode;
-	}
-
-	public void setMode(String mode) {
-		this.mode = mode;
 	}
 
 	public HashMap<String, String> getOptions() {

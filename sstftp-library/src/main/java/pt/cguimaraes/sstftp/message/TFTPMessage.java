@@ -36,6 +36,7 @@ public abstract class TFTPMessage {
 	public final static int DATA  = 3;
 	public final static int ACK   = 4;
 	public final static int ERROR = 5;
+	public final static int OACK  = 6;
 
 	protected InetAddress ip;
 	protected int port;
