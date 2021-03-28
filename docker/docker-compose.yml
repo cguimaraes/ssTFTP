@@ -1,0 +1,14 @@
+version: "3"
+
+services:
+  server:
+    image: sstftp:v0.2
+    build: .
+    network_mode: host
+    command: java -jar sstftp-server/target/sstftp-server-0.2.jar $SSTFTP_SERVER_ARGS
+
+  client:
+    image: sstftp:v0.2
+    build: .
+    command: java -jar sstftp-client/target/sstftp-client-0.2.jar $SSTFTP_CLIENT_ARGS
+    network_mode: host

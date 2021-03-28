@@ -12,7 +12,7 @@ decided to revive and improve.
 The current version (v0.2 beta) implements the TFTP client and server according
 to the standard RFC 1350. TFTP Option Extension, according standard RFC 2347,
 is implemented:
-   -> TFTP Blocksize Option (RFC 2348)
+ - TFTP Blocksize Option (RFC 2348)
 
 For more info, please check CHANGELOG file.
 
@@ -20,6 +20,7 @@ Requirements
 ------------
 * Java 7
 * Maven (for building)
+* Docker (optional)
 
 Build ssTFTP
 --------------
@@ -28,13 +29,17 @@ from the project root directory:
 
     mvn clean install
 
+or
+
+    cd docker && docker-compose build
+
 On the first build, Maven will download all the dependencies from the
 internet and cache them in the local repository (`~/.m2/repository`), which
 can take a considerable amount of time. Subsequent builds will be faster.
 
 Where to get help
 -----------------
-You can ask me directly by email or create an issue in
+You can create an issue in
 [GitHub repository](https://github.com/cguimaraes/ssTFTP).
 
 Contribution guidelines
