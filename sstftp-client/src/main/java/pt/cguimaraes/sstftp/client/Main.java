@@ -131,15 +131,15 @@ public class Main {
 
 			// Parse maximum retries
 			if(line.hasOption('r')) {
-				dstPort = Integer.parseInt(line.getOptionValue('r'));
-				if(dstPort < 0)
+				retries = Integer.parseInt(line.getOptionValue('r'));
+				if(retries < 0)
 					throw new ParseException("Invalid maximum retries value");
 			}
 
 			// Parse timeout to retransmissions
 			if(line.hasOption('t')) {
-				dstPort = Integer.parseInt(line.getOptionValue('t'));
-				if(dstPort < 0)
+				timeout = Integer.parseInt(line.getOptionValue('t'));
+				if(timeout < 0)
 					throw new ParseException("Invalid timeout to retransmissions");
 			}
 
