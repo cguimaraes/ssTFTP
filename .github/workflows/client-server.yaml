@@ -1,0 +1,73 @@
+#=============================================================================
+# Brief     : ssTFTP Server and ssTFTP Client
+# Author(s) : Carlos Guimarães <carlos.em.guimaraes@gmail.com>
+# ----------------------------------------------------------------------------
+# ssTFTP - Open Trivial File Transfer Protocol
+#
+# Copyright (C) 2008-2023 Carlos Guimarães
+#
+# This file is part of ssTFTP.
+#
+# ssTFTP is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ssTFTP is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with ssTFTP. If not, write to the Free Software Foundation,
+# Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+#=============================================================================
+
+name: ssTFTP Server and ssTFTP Client
+
+on:
+  push:
+    branches: [ '**' ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  client_server:
+    name: Running on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build
+      run: mvn clean install
+
+    - name: Run F1024.txt
+      run: |
+           mv ./example-files/* .
+           java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 &
+           sleep 5
+
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1024.txt -s localhost -p 55555
+           sleep 1
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -s localhost -p 55555
+           sleep 1
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -s localhost -p 55555
+           sleep 5
+
+           rm f1024.txt f1268.txt ovos_moles.jpg
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -s localhost -p 55555
+           sleep 1
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -s localhost -p 55555
+           sleep 1
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -s localhost -p 55555
+           sleep 5
+
+    - name: Check results
+      run: |
+           cmp --silent ./example-files/f1024.txt f1024.txt
+           cmp --silent ./example-files/f1268.txt f1268.txt
+           cmp --silent ./example-files/ovos_moles.jpg ovos_moles.jpg
