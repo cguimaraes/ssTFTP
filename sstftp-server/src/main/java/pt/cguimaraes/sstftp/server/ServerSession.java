@@ -54,6 +54,7 @@ public class ServerSession extends Thread {
 
 	private int bSize;
 	private int bSizeMax;
+	private long fileSize;
 	private long tSizeMax;
 	private int opcode;
 	private String mode;
@@ -89,6 +90,7 @@ public class ServerSession extends Thread {
 		this.bSizeMax = bSizeMax;
 		this.bSize = 512; // Default block size
 		this.tSizeMax = tSizeMax;
+		this.fileSize = -1;
 		try {
 			switch(msg.getOpcode()) {
 				case TFTPMessage.RRQ: {
@@ -202,6 +204,13 @@ public class ServerSession extends Thread {
 		// If data length lower than block size, transfer is complete
 		if(dataMsg.getData().length < bSize) {
 			Logger.getGlobal().info("Transfer complete");
+			try {
+				if(fileSize != -1 && file.length() != fileSize)
+					Logger.getGlobal().warning("File size is different from the transfer size reported by the TFTP Server.");
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
 			socket.close();
 			Thread.currentThread().interrupt();
 			return;
@@ -290,8 +299,8 @@ public class ServerSession extends Thread {
 						} break;
 
 						case TFTPMessage.WRQ: {
-							long tmp = Integer.parseInt(entry.getValue());
-							if(tSizeMax != -1 && tmp > tSizeMax) {
+							long fileSize = Integer.parseInt(entry.getValue());
+							if(tSizeMax != -1 && fileSize > tSizeMax) {
 								Logger.getGlobal().warning("File to upload exceeds the maximum size allowed");
 								ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.DISK_FULL_OR_ALLOCATION_EXCEEDED);
 								send(errorMsg);
