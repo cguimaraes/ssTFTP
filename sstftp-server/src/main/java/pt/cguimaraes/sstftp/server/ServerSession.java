@@ -299,7 +299,7 @@ public class ServerSession extends Thread {
 						} break;
 
 						case TFTPMessage.WRQ: {
-							long fileSize = Integer.parseInt(entry.getValue());
+							fileSize = Integer.parseInt(entry.getValue());
 							if(tSizeMax != -1 && fileSize > tSizeMax) {
 								Logger.getGlobal().warning("File to upload exceeds the maximum size allowed");
 								ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.DISK_FULL_OR_ALLOCATION_EXCEEDED);
