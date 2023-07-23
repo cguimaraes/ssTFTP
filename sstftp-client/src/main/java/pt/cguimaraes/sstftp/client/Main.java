@@ -38,7 +38,7 @@ public class Main {
 				.withDescription("server host")
 				.hasArgs(1)
 				.isRequired()
-				.create('s'));
+				.create('c'));
 		arguments.addOption(OptionBuilder.withLongOpt("port")
 				.withDescription("server port (default: 69)")
 				.hasArgs(1)
@@ -58,6 +58,10 @@ public class Main {
 				.withDescription("block size (default: 512)")
 				.hasArgs(1)
 				.create('b'));
+		arguments.addOption(OptionBuilder.withLongOpt("no-tsize")
+				.withDescription("receive/send file length (default: enabled)")
+				.hasArgs(0)
+				.create('s'));
 		arguments.addOption(OptionBuilder.withLongOpt("retries")
 				.withDescription("maximum retries (default: 3)")
 				.hasArgs(1)
@@ -69,7 +73,7 @@ public class Main {
 		arguments.addOption(OptionBuilder.withLongOpt("log")
 				.withDescription("Log level [0-2] (default: 1)")
 				.hasArgs(1)
-				.create('l'));
+				.create('v'));
 
 		String action = "";
 		String path = "";
@@ -80,6 +84,7 @@ public class Main {
 		int blksize = 512; // Default block size
 		int retries = 3;
 		int timeout = 2000;
+		boolean tsize = true;
 		HashMap<String, String> options = new HashMap<String, String>();
 
 		try {
@@ -107,7 +112,7 @@ public class Main {
 
 			// Parse hostname
 			try {
-				dstIp = InetAddress.getByName(line.getOptionValue('s'));
+				dstIp = InetAddress.getByName(line.getOptionValue('c'));
 			} catch (UnknownHostException e) {
 				throw new ParseException("Could not find hostname");
 			}
@@ -129,6 +134,11 @@ public class Main {
 					throw new ParseException("Invalid block size");
 			}
 
+			// Parse receive/send file length
+			if(line.hasOption('s')) {
+				tsize = false;
+			}
+
 			// Parse maximum retries
 			if(line.hasOption('r')) {
 				retries = Integer.parseInt(line.getOptionValue('r'));
@@ -145,8 +155,8 @@ public class Main {
 
 			// Parse log level
 			logger.setLevel(Level.ALL); // Default log level
-			if(line.hasOption('l')) {
-				switch (Integer.parseInt(line.getOptionValue('l'))) {
+			if(line.hasOption('v')) {
+				switch (Integer.parseInt(line.getOptionValue('v'))) {
 				case 0:
 					logger.setLevel(Level.OFF);
 					break;
