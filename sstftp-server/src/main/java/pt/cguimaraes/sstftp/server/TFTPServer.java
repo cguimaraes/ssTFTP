@@ -43,12 +43,14 @@ public class TFTPServer extends Thread {
 	private int retries;
 	private int timeout;
 	private int blksize;
+	private long tsize;
 
-	public TFTPServer(int port, String localDir, int retries, int timeout, int blksize) throws SocketException, NoSuchMethodException, SecurityException, UnknownHostException {
+	public TFTPServer(int port, String localDir, int retries, int timeout, int blksize, long tsize) throws SocketException, NoSuchMethodException, SecurityException, UnknownHostException {
 		this.localDir = localDir;
 		this.retries  = retries;
 		this.timeout  = timeout;
 		this.blksize  = blksize;
+		this.tsize  = tsize;
 
 		Method handler = TFTPServer.class.getMethod("handler", new Class[]{TFTPMessage.class});
 
@@ -73,7 +75,7 @@ public class TFTPServer extends Thread {
 	public void handler(TFTPMessage msg) throws IOException, NoSuchMethodException, SecurityException, SocketException {
 		ServerSession session = null;
 
-		session = new ServerSession(localDir, retries, timeout, blksize, msg);
+		session = new ServerSession(localDir, retries, timeout, blksize, tsize, msg);
 
 		if(session.isInitialized())
 			session.start();

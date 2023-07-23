@@ -185,8 +185,12 @@ public class Main {
 				logger.severe("File does not exists or cannot be opened");
 				System.exit(1);
 			}
+
+			if (tsize)
+				options.put("tsize", Long.toString(f.length()));
+
 		} else if(action.equals("get")) {
-			File f = new File(path);
+			File f = new File(path);			
 			if (f.exists()) {
 				logger.severe("File already exists. Override [Y/n]? ");
 				@SuppressWarnings("resource")
@@ -194,6 +198,9 @@ public class Main {
 				if (input.toLowerCase().charAt(0) != 'y')
 					System.exit(0);
 			}
+
+			if (tsize)
+				options.put("tsize", "0");
 		}
 
 		new TFTPClient(dstIp, dstPort, action, mode, path, retries, timeout, blksize, options);

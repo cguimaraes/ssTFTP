@@ -141,6 +141,6 @@ public class Main {
 			System.exit(1);
 		}
 
-		new TFTPServer(port, localDir, retries, timeout, blksize);
+		new TFTPServer(port, localDir, retries, timeout, blksize, tsize);
 	}
 }
