@@ -45,25 +45,25 @@ jobs:
     - name: Build
       run: mvn clean install
 
-    - name: Run GET and PUT operations with TFTP Blocksize Option (RFC 2348)
+    - name: Run GET and PUT operations with default behavior
       run: |
            mv ./example-files/* .
-           java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -b 256 &
+           java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 &
            sleep 5
 
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1024.txt -c localhost -p 55555 -b 512
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1024.txt -c localhost -p 55555
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -c localhost -p 55555 -b 128
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -c localhost -p 55555
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -c localhost -p 55555 -b 100
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -c localhost -p 55555
            sleep 5
 
            rm f1024.txt f1268.txt ovos_moles.jpg
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -c localhost -p 55555 -b 100
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -c localhost -p 55555
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -c localhost -p 55555 -b 512
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -c localhost -p 55555
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -c localhost -p 55555 -b 128
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -c localhost -p 55555
            sleep 5
 
            pkill -9 java
