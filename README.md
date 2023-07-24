@@ -13,6 +13,7 @@ The current version (v0.2 beta) implements the TFTP client and server according
 to the standard RFC 1350. TFTP Option Extension, according standard RFC 2347,
 is implemented:
  - TFTP Blocksize Option (RFC 2348)
+ - TFTP Transfer Size Options (RFC 2349)
 
 For more info, please check CHANGELOG file.
 
