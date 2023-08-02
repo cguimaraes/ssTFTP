@@ -83,7 +83,6 @@ public class TFTPSocket implements Runnable {
 
 		this.externalClass = externalClass;
 		this.externalHandler = externalHandler;
-		this.timer = new Timer();
 	}
 
 	public TFTPSocket(InetAddress ipAddress, int port, Object externalClass, Method externalHandler) throws SocketException {
@@ -94,7 +93,6 @@ public class TFTPSocket implements Runnable {
 
 		this.externalClass = externalClass;
 		this.externalHandler = externalHandler;
-		this.timer = new Timer();
 	}
 
 	public void bind(InetAddress ipAddress, int port) throws SocketException {
@@ -178,8 +176,9 @@ public class TFTPSocket implements Runnable {
 					msg = msgData;
 
 					// If next data block was received cancel timer
-					if(lastAck + 1 == msgData.getBlockNumber())
-						timer.cancel();
+					if(lastAck + 1 == msgData.getBlockNumber()) {
+						stopTimer(timer);
+					}
 
 				} break;
 
@@ -189,12 +188,13 @@ public class TFTPSocket implements Runnable {
 					msg = msgAck;
 
 					// If acknowledge to the current data block was received cancel timer
-					if(lastBlock == msgAck.getBlockNumber())
-						timer.cancel();
+					if(lastBlock == msgAck.getBlockNumber()) {
+						stopTimer(timer);
+					}
 				} break;
 
 				case TFTPMessage.ERROR: {
-					timer.cancel();
+					stopTimer(timer);
 
 					ErrorMessage msgError = new ErrorMessage(recvPacket.getAddress(), recvPacket.getPort());
 					msgError.fromBytes(new ByteArrayInputStream(recvPacket.getData(), 0, recvPacket.getLength()));
@@ -202,7 +202,7 @@ public class TFTPSocket implements Runnable {
 				} break;
 
 				case TFTPMessage.OACK: {
-					timer.cancel();
+					stopTimer(timer);
 
 					OptionAcknowledgeMessage msgOAck = new OptionAcknowledgeMessage(recvPacket.getAddress(), recvPacket.getPort());
 					msgOAck.fromBytes(new ByteArrayInputStream(recvPacket.getData(), 0, recvPacket.getLength()));
@@ -224,10 +224,10 @@ public class TFTPSocket implements Runnable {
 	}
 
 	public void close() {
-		timer.cancel();
+		stopTimer(timer);
+
 		socket.close();
 		running = false;
-		Thread.currentThread().interrupt();
 	}
 
 	public int getRetries() {
@@ -244,5 +244,10 @@ public class TFTPSocket implements Runnable {
 
 	public void setTimeout(int timeout) {
 		this.timeout = timeout;
+	}
+
+	private void stopTimer(Timer timer) {
+		timer.cancel();
+		timer.purge();
 	}
 }
