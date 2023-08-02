@@ -47,16 +47,21 @@ public class Main {
 				.withDescription("Maximum block size allowed (default: no limit)")
 				.hasArgs(1)
 				.create('b'));
+		options.addOption(OptionBuilder.withLongOpt("tsize")
+				.withDescription("Maximum file size allowed (default: no limit)")
+				.hasArgs(1)
+				.create('s'));
 		options.addOption(OptionBuilder.withLongOpt("log")
 				.withDescription("Log level [0-2] (default: 1)")
 				.hasArgs(1)
-				.create('l'));
+				.create('v'));
 
 		int port = 69;
 		String localDir = "";
 		int retries = 3;
 		int timeout = 2000;
 		int blksize = -1;
+		long tsize = -1;
 
 		try {
 			CommandLineParser parser = new GnuParser();
@@ -103,10 +108,17 @@ public class Main {
 					throw new ParseException("Invalid block size");
 			}
 
+			// Parse receive/send file length
+			if(line.hasOption('s')) {
+				tsize = Long.parseLong(line.getOptionValue('s'));
+				if(tsize < 0)
+					throw new ParseException("Invalid file size");
+			}
+
 			// Parse log level
 			logger.setLevel(Level.ALL); // Default log level
-			if(line.hasOption('l')) {
-				switch (Integer.parseInt(line.getOptionValue('l'))) {
+			if(line.hasOption('v')) {
+				switch (Integer.parseInt(line.getOptionValue('v'))) {
 				case 0:
 					logger.setLevel(Level.OFF);
 					break;
@@ -129,6 +141,6 @@ public class Main {
 			System.exit(1);
 		}
 
-		new TFTPServer(port, localDir, retries, timeout, blksize);
+		new TFTPServer(port, localDir, retries, timeout, blksize, tsize);
 	}
 }

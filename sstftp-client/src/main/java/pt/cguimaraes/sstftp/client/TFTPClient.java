@@ -56,6 +56,7 @@ public class TFTPClient {
 	private String action;
 	private String mode;
 	private int blksize;
+	private long fileSize;
 	private HashMap<String, String> options;
 
 	private RandomAccessFile file;
@@ -68,6 +69,7 @@ public class TFTPClient {
 		this.mode     = mode;
 		this.blksize  = blksize;
 		this.options  = options;
+		this.fileSize = -1;
 
 		Method handler = null;
 		if (action.equals("put"))
@@ -189,6 +191,13 @@ public class TFTPClient {
 		// If data length lower than block size, transfer is complete
 		if(msgData.getData().length < blksize) {
 			Logger.getGlobal().info("Transfer complete");
+			try {
+				if(fileSize != -1 && file.length() != fileSize)
+					Logger.getGlobal().warning("File size is different from the transfer size reported by the TFTP Server.");
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
 			System.exit(0);
 		}
 	}
@@ -253,6 +262,10 @@ public class TFTPClient {
 				switch(entry.getKey()) {
 					case "blksize": {
 						blksize = Integer.parseInt(entry.getValue());
+					} break;
+
+					case "tsize": {
+						fileSize = Long.parseLong(entry.getValue());
 					} break;
 
 					default:

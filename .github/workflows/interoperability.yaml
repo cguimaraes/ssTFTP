@@ -57,19 +57,19 @@ jobs:
            sleep 5
 
            mv ./example-files/* .
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1024.txt -s localhost
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1024.txt -c localhost
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -s localhost
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -c localhost
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -s localhost
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -c localhost
            sleep 5
 
            rm f1024.txt f1268.txt ovos_moles.jpg
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -s localhost
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -c localhost
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -s localhost
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -c localhost
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -s localhost
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -c localhost
            sleep 5
            
            sudo launchctl unload -F /System/Library/LaunchDaemons/tftp.plist
@@ -92,21 +92,56 @@ jobs:
            sudo chmod 777 /private/tftpboot/*
            sleep 5
 
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1024.txt -s localhost -b 512
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1024.txt -c localhost -b 512
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -s localhost -b 128
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -c localhost -b 128
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -s localhost -b 100
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -c localhost -b 100
            sleep 5
 
            rm f1024.txt f1268.txt ovos_moles.jpg
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -s localhost -b 100
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -c localhost -b 100
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -s localhost -b 512
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -c localhost -b 512
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -s localhost -b 128
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -c localhost -b 128
            sleep 5
            
+           sudo launchctl unload -F /System/Library/LaunchDaemons/tftp.plist
+
+    - name: Check results with blksize
+      run: |
+           cmp --silent /private/tftpboot/f1024.txt f1024.txt
+           cmp --silent /private/tftpboot/f1268.txt f1268.txt
+           cmp --silent /private/tftpboot/ovos_moles.jpg ovos_moles.jpg
+           rm -rf /private/tftpboot/*
+
+    - name: Run GET and PUT operations with tsize
+      run: |
+           sudo launchctl load -F /System/Library/LaunchDaemons/tftp.plist
+           sudo launchctl start com.apple.tftpd
+           sudo chmod 777 /private/tftpboot
+           sudo touch /private/tftpboot/f1024.txt
+           sudo touch /private/tftpboot/f1268.txt
+           sudo touch /private/tftpboot/ovos_moles.jpg
+           sudo chmod 777 /private/tftpboot/*
+           sleep 5
+
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1024.txt -c localhost -s
+           sleep 1
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -c localhost -s
+           sleep 1
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -c localhost -s
+           sleep 5
+
+           rm f1024.txt f1268.txt ovos_moles.jpg
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -c localhost -s
+           sleep 1
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -c localhost -s
+           sleep 1
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -c localhost -s
+           sleep 5
+
            sudo launchctl unload -F /System/Library/LaunchDaemons/tftp.plist
 
     - name: Check results with blksize
@@ -143,19 +178,19 @@ jobs:
            sleep 5
 
            mv ./example-files/* .
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1024.txt -s localhost
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1024.txt -c localhost
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -s localhost
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -c localhost
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -s localhost
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -c localhost
            sleep 5
 
            rm f1024.txt f1268.txt ovos_moles.jpg
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -s localhost
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -c localhost
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -s localhost
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -c localhost
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -s localhost
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -c localhost
            sleep 5
 
            sudo service tftpd-hpa stop
@@ -177,19 +212,53 @@ jobs:
            sudo chmod 777 /srv/tftp/*
            sleep 5
 
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1024.txt -s localhost -b 512
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1024.txt -c localhost -b 512
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -s localhost -b 128
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -c localhost -b 128
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -s localhost -b 100
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -c localhost -b 100
            sleep 5
 
            rm f1024.txt f1268.txt ovos_moles.jpg
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -s localhost -b 100
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -c localhost -b 100
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -s localhost -b 512
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -c localhost -b 512
            sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -s localhost -b 128
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -c localhost -b 128
+           sleep 5
+
+           sudo service tftpd-hpa stop
+
+    - name: Check results with blksize
+      run: |
+           cmp --silent /srv/tftp/f1024.txt f1024.txt
+           cmp --silent /srv/tftp/f1268.txt f1268.txt
+           cmp --silent /srv/tftp/ovos_moles.jpg ovos_moles.jpg
+           rm -rf /srv/tftp/*
+
+    - name: Run GET and PUT operations with tsize
+      run: |
+           sudo service tftpd-hpa start
+           sudo chmod 777 /srv/tftp/
+           sudo touch /srv/tftp/f1024.txt
+           sudo touch /srv/tftp/f1268.txt
+           sudo touch /srv/tftp/ovos_moles.jpg
+           sudo chmod 777 /srv/tftp/*
+           sleep 5
+
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1024.txt -c localhost -s
+           sleep 1
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -c localhost -s
+           sleep 1
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -c localhost -s
+           sleep 5
+
+           rm f1024.txt f1268.txt ovos_moles.jpg
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -c localhost -s
+           sleep 1
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -c localhost -s
+           sleep 1
+           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -c localhost -s
            sleep 5
 
            sudo service tftpd-hpa stop

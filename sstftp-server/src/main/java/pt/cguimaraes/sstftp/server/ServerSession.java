@@ -54,6 +54,8 @@ public class ServerSession extends Thread {
 
 	private int bSize;
 	private int bSizeMax;
+	private long fileSize;
+	private long tSizeMax;
 	private int opcode;
 	private String mode;
 	private HashMap<String, String> options;
@@ -63,7 +65,7 @@ public class ServerSession extends Thread {
 	private boolean sentLast = false;
 	private boolean initialized = true;
 
-	public ServerSession(String localDir, int retries, int timeout, int bSizeMax, TFTPMessage msg) throws NoSuchMethodException, SecurityException, SocketException
+	public ServerSession(String localDir, int retries, int timeout, int bSizeMax, long tSizeMax, TFTPMessage msg) throws NoSuchMethodException, SecurityException, SocketException
 	{
 		// Initialize TFTP Socket
 		Method handler = null;
@@ -87,6 +89,8 @@ public class ServerSession extends Thread {
 		// Configure session
 		this.bSizeMax = bSizeMax;
 		this.bSize = 512; // Default block size
+		this.tSizeMax = tSizeMax;
+		this.fileSize = -1;
 		try {
 			switch(msg.getOpcode()) {
 				case TFTPMessage.RRQ: {
@@ -200,6 +204,13 @@ public class ServerSession extends Thread {
 		// If data length lower than block size, transfer is complete
 		if(dataMsg.getData().length < bSize) {
 			Logger.getGlobal().info("Transfer complete");
+			try {
+				if(fileSize != -1 && file.length() != fileSize)
+					Logger.getGlobal().warning("File size is different from the transfer size reported by the TFTP Server.");
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
 			socket.close();
 			Thread.currentThread().interrupt();
 			return;
@@ -274,6 +285,32 @@ public class ServerSession extends Thread {
 					else {
 						bSize = bSizeMax;
 						entry.setValue(Integer.toString(bSize));
+					}
+				} break;
+
+				case "tsize": {
+					switch(opcode) {
+						case TFTPMessage.RRQ: {
+							try {
+								entry.setValue(Long.toString(file.length()));
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
+						} break;
+
+						case TFTPMessage.WRQ: {
+							fileSize = Integer.parseInt(entry.getValue());
+							if(tSizeMax != -1 && fileSize > tSizeMax) {
+								Logger.getGlobal().warning("File to upload exceeds the maximum size allowed");
+								ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.DISK_FULL_OR_ALLOCATION_EXCEEDED);
+								send(errorMsg);
+
+								socket.close();
+								Thread.currentThread().interrupt();
+								return;
+							}
+							
+						} break;
 					}
 				} break;
 
