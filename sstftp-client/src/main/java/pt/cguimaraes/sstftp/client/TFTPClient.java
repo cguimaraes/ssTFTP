@@ -81,9 +81,6 @@ public class TFTPClient {
 		socket.setRetries(retries);
 		socket.setTimeout(timeout);
 
-		Thread t = new Thread(socket);
-        t.start();
-
 		if (action.equals("put")) {
 			WriteRequestMessage msgWRQ = new WriteRequestMessage(path, mode, options);
 			send(msgWRQ);
@@ -97,6 +94,8 @@ public class TFTPClient {
 			file = new RandomAccessFile(path, "rw");
 			Logger.getGlobal().info("Downloading " + path + " from server in " + mode + " mode...");
 		}
+
+		socket.run();
 	}
 
 	public void send(TFTPMessage msg) {

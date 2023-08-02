@@ -48,7 +48,7 @@ import pt.cguimaraes.sstftp.message.TFTPMessage;
 import pt.cguimaraes.sstftp.message.WriteRequestMessage;
 import pt.cguimaraes.sstftp.socket.TFTPSocket;
 
-public class ServerSession extends Thread {
+public class ServerSession {
 
 	private TFTPSocket socket;
 
@@ -83,9 +83,6 @@ public class ServerSession extends Thread {
 		this.socket.setRetries(retries);
 		this.socket.setTimeout(timeout);
 
-		Thread t = new Thread(socket);
-		t.start();
-
 		// Configure session
 		this.bSizeMax = bSizeMax;
 		this.bSize = 512; // Default block size
@@ -118,6 +115,8 @@ public class ServerSession extends Thread {
 
 			Logger.getGlobal().info("File not found");
 		}
+
+		socket.run();
 	}
 
 	// Send TFTP message via current session
@@ -193,7 +192,6 @@ public class ServerSession extends Thread {
 
 			Logger.getGlobal().warning("Cannot write on file");
 			socket.close();
-			Thread.currentThread().interrupt();
 			return;
 		}
 
@@ -212,7 +210,6 @@ public class ServerSession extends Thread {
 			}
 
 			socket.close();
-			Thread.currentThread().interrupt();
 			return;
 		}
 	}
@@ -246,7 +243,6 @@ public class ServerSession extends Thread {
 				} else {
 					Logger.getGlobal().info("Transfer complete");
 					socket.close();
-					Thread.currentThread().interrupt();
 					return;
 				}
 			}
@@ -259,7 +255,6 @@ public class ServerSession extends Thread {
 
 			Logger.getGlobal().warning("Cannot read file");
 			socket.close();
-			Thread.currentThread().interrupt();
 			return;
 		}
 	}
@@ -268,7 +263,6 @@ public class ServerSession extends Thread {
 	private void handleError(ErrorMessage msgError) {
 		Logger.getGlobal().info("Error (" + msgError.getErrorCode() + "): " + msgError.getErrorMsg());
 		socket.close();
-		Thread.currentThread().interrupt();
 		return;
 	}
 
@@ -306,7 +300,6 @@ public class ServerSession extends Thread {
 								send(errorMsg);
 
 								socket.close();
-								Thread.currentThread().interrupt();
 								return;
 							}
 							

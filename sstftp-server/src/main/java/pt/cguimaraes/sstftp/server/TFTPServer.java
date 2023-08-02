@@ -35,7 +35,7 @@ import java.util.logging.Logger;
 import pt.cguimaraes.sstftp.message.TFTPMessage;
 import pt.cguimaraes.sstftp.socket.TFTPSocket;
 
-public class TFTPServer extends Thread {
+public class TFTPServer {
 
 	private TFTPSocket socket;
 
@@ -59,8 +59,7 @@ public class TFTPServer extends Thread {
 		socket.setRetries(retries);
 		socket.setTimeout(timeout);
 
-		Thread t = new Thread(socket);
-        t.start();
+		socket.run();
 	}
 
 	public void send(TFTPMessage msg) {
@@ -78,6 +77,6 @@ public class TFTPServer extends Thread {
 		session = new ServerSession(localDir, retries, timeout, blksize, tsize, msg);
 
 		if(session.isInitialized())
-			session.start();
+			session.run();
 	}
 }

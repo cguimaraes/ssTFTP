@@ -227,7 +227,6 @@ public class TFTPSocket implements Runnable {
 		timer.cancel();
 		socket.close();
 		running = false;
-		Thread.currentThread().interrupt();
 	}
 
 	public int getRetries() {
