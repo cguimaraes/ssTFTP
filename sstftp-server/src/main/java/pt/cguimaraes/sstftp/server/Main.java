@@ -23,36 +23,36 @@ public class Main {
         logger.setLevel(Level.ALL);
 
         // create the Options
-        Options options = new Options();
-        options.addOption(OptionBuilder.withLongOpt("help")
+        Options arguments = new Options();
+        arguments.addOption(OptionBuilder.withLongOpt("help")
                 .withDescription("print this message")
                 .create('h'));
-        options.addOption(OptionBuilder.withLongOpt("port")
+        arguments.addOption(OptionBuilder.withLongOpt("port")
                 .withDescription("listening port (default: 69)")
                 .hasArgs(1)
                 .create('p'));
-        options.addOption(OptionBuilder.withLongOpt("directory")
+        arguments.addOption(OptionBuilder.withLongOpt("directory")
                 .withDescription("path to the directory that contains the files")
                 .hasArgs(1)
                 .isRequired()
                 .create('d'));
-        options.addOption(OptionBuilder.withLongOpt("retries")
+        arguments.addOption(OptionBuilder.withLongOpt("retries")
                 .withDescription("maximum retries (default: 3)")
                 .hasArgs(1)
                 .create('r'));
-        options.addOption(OptionBuilder.withLongOpt("timeout")
+        arguments.addOption(OptionBuilder.withLongOpt("timeout")
                 .withDescription("timeout to retransmissions (ms) (default: 2000)")
                 .hasArgs(1)
                 .create('t'));
-        options.addOption(OptionBuilder.withLongOpt("blksize")
+        arguments.addOption(OptionBuilder.withLongOpt("blksize")
                 .withDescription("Maximum block size allowed (default: no limit)")
                 .hasArgs(1)
                 .create('b'));
-        options.addOption(OptionBuilder.withLongOpt("tsize")
+        arguments.addOption(OptionBuilder.withLongOpt("tsize")
                 .withDescription("Maximum file size allowed (default: no limit)")
                 .hasArgs(1)
                 .create('s'));
-        options.addOption(OptionBuilder.withLongOpt("log")
+        arguments.addOption(OptionBuilder.withLongOpt("log")
                 .withDescription("Log level [0-2] (default: 1)")
                 .hasArgs(1)
                 .create('v'));
@@ -66,12 +66,12 @@ public class Main {
 
         try {
             CommandLineParser parser = new GnuParser();
-            CommandLine line = parser.parse(options, args);
+            CommandLine line = parser.parse(arguments, args);
 
             // If help is defined
             if (line.hasOption('h')) {
                 HelpFormatter formatter = new HelpFormatter();
-                formatter.printHelp(80, "sstftp ", "", options, "", true);
+                formatter.printHelp(80, "sstftp ", "", arguments, "", true);
                 System.exit(0);
             }
 
@@ -148,7 +148,7 @@ public class Main {
             logger.severe(e.getMessage());
 
             HelpFormatter formatter = new HelpFormatter();
-            formatter.printHelp(80, "sstftp-server ", "", options, "", true);
+            formatter.printHelp(80, "sstftp-server ", "", arguments, "", true);
             System.exit(1);
         }
 
