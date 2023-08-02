@@ -123,7 +123,6 @@ public class TFTPSocket implements Runnable {
 		socket.send(socketPacket);
 
 		// Start timer for retransmissions
-		this.timer = new Timer();
 		this.timer.schedule(new TimerTask() {
 			int i = 0;
 			public void run() {
