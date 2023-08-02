@@ -33,75 +33,75 @@ import java.util.Map.Entry;
 
 public class OptionAcknowledgeMessage extends TFTPMessage {
 
-	private HashMap<String, String> options;
+    private HashMap<String, String> options;
 
-	public OptionAcknowledgeMessage() {
-		super();
-		this.opcode = OACK;
-		this.options = new HashMap<String, String>();
-	}
+    public OptionAcknowledgeMessage() {
+        super();
+        this.opcode = OACK;
+        this.options = new HashMap<String, String>();
+    }
 
-	public OptionAcknowledgeMessage(InetAddress address, int port) {
-		super(address, port);
-		this.options = new HashMap<String, String>();
-	}
+    public OptionAcknowledgeMessage(InetAddress address, int port) {
+        super(address, port);
+        this.options = new HashMap<String, String>();
+    }
 
-	public OptionAcknowledgeMessage(HashMap<String, String> options) {
-		super();
-		this.opcode = OACK;
-		this.options = options;
-	}
+    public OptionAcknowledgeMessage(HashMap<String, String> options) {
+        super();
+        this.opcode = OACK;
+        this.options = options;
+    }
 
-	public void toBytes(ByteArrayOutputStream stream) {
-		super.toBytes(stream);
+    public void toBytes(ByteArrayOutputStream stream) {
+        super.toBytes(stream);
 
-		byte[] tmp;
-		for(Entry<String, String> entry : options.entrySet()) {
-		    tmp = entry.getKey().getBytes();
-		    stream.write(tmp, 0, tmp.length);
-			stream.write(0);
+        byte[] tmp;
+        for (Entry<String, String> entry : options.entrySet()) {
+            tmp = entry.getKey().getBytes();
+            stream.write(tmp, 0, tmp.length);
+            stream.write(0);
 
-			tmp = entry.getValue().getBytes();
-			stream.write(tmp, 0, tmp.length);
-			stream.write(0);
-		}
-	}
+            tmp = entry.getValue().getBytes();
+            stream.write(tmp, 0, tmp.length);
+            stream.write(0);
+        }
+    }
 
-	public void fromBytes(ByteArrayInputStream stream) {
-		super.fromBytes(stream);
+    public void fromBytes(ByteArrayInputStream stream) {
+        super.fromBytes(stream);
 
-		byte tmp;
-		StringBuilder strBuilder = new StringBuilder();
+        byte tmp;
+        StringBuilder strBuilder = new StringBuilder();
 
-		while(stream.available() > 0) {
-			String opt;
-			String value;
+        while (stream.available() > 0) {
+            String opt;
+            String value;
 
-			strBuilder = new StringBuilder();
-			while((tmp = (byte) stream.read()) != 0x00) {
-				strBuilder.append((char)tmp);
-			}
-			opt = strBuilder.toString();
+            strBuilder = new StringBuilder();
+            while ((tmp = (byte) stream.read()) != 0x00) {
+                strBuilder.append((char) tmp);
+            }
+            opt = strBuilder.toString();
 
-			strBuilder = new StringBuilder();
-			while((tmp = (byte) stream.read()) != 0x00) {
-				strBuilder.append((char)tmp);
-			}
-			value = strBuilder.toString();
+            strBuilder = new StringBuilder();
+            while ((tmp = (byte) stream.read()) != 0x00) {
+                strBuilder.append((char) tmp);
+            }
+            value = strBuilder.toString();
 
-			options.put(opt, value);
-		}
-	}
+            options.put(opt, value);
+        }
+    }
 
-	public HashMap<String, String> getOptions() {
-		return options;
-	}
+    public HashMap<String, String> getOptions() {
+        return options;
+    }
 
-	public void setOptions(HashMap<String, String> options) {
-		this.options = options;
-	}
+    public void setOptions(HashMap<String, String> options) {
+        this.options = options;
+    }
 
-	public void setOption(String opt, String value) {
-		options.put(opt, value);
-	}
+    public void setOption(String opt, String value) {
+        options.put(opt, value);
+    }
 }

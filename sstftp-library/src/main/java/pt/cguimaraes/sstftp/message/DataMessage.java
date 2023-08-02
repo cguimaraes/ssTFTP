@@ -31,55 +31,56 @@ import java.net.InetAddress;
 
 public class DataMessage extends TFTPMessage {
 
-	private int blockNumber;
-	private byte[] data;
+    private int blockNumber;
+    private byte[] data;
 
-	public DataMessage() {
-		super();
-		this.opcode = DATA;
-		blockNumber = 0;
-		data = new byte[0];
-	}
+    public DataMessage() {
+        super();
+        this.opcode = DATA;
+        blockNumber = 0;
+        data = new byte[0];
+    }
 
-	public DataMessage(InetAddress address, int port) {
-		super(address, port);
-	}
+    public DataMessage(InetAddress address, int port) {
+        super(address, port);
+    }
 
-	public DataMessage(int blockNumber, byte[] data) {
-		super();
-		this.opcode = DATA;
-		this.blockNumber = blockNumber;
-		this.data = data;
-	}
+    public DataMessage(int blockNumber, byte[] data) {
+        super();
+        this.opcode = DATA;
+        this.blockNumber = blockNumber;
+        this.data = data;
+    }
 
-	public void toBytes(ByteArrayOutputStream stream) {
-		super.toBytes(stream);
-		stream.write((byte) ((blockNumber & 0xFF00) >> 8));
+    public void toBytes(ByteArrayOutputStream stream) {
+        super.toBytes(stream);
+        stream.write((byte) ((blockNumber & 0xFF00) >> 8));
         stream.write((byte) (blockNumber & 0x00FF));
-		stream.write(data, 0, data.length);
-	}
+        stream.write(data, 0, data.length);
+    }
 
-	public void fromBytes(ByteArrayInputStream stream) {
-		super.fromBytes(stream);
-		blockNumber = (stream.read() << 8) | stream.read();
-		data = new byte[stream.available()];
-		for(int i = 0; stream.available() > 0; ++i)
-			data[i] = (byte) stream.read();
-	}
+    public void fromBytes(ByteArrayInputStream stream) {
+        super.fromBytes(stream);
+        blockNumber = (stream.read() << 8) | stream.read();
+        data = new byte[stream.available()];
+        for (int i = 0; stream.available() > 0; ++i) {
+            data[i] = (byte) stream.read();
+        }
+    }
 
-	public int getBlockNumber() {
-		return blockNumber;
-	}
+    public int getBlockNumber() {
+        return blockNumber;
+    }
 
-	public void setBlockNumber(int blockNumber) {
-		this.blockNumber = blockNumber;
-	}
+    public void setBlockNumber(int blockNumber) {
+        this.blockNumber = blockNumber;
+    }
 
-	public byte[] getData() {
-		return data;
-	}
+    public byte[] getData() {
+        return data;
+    }
 
-	public void setData(byte[] data) {
-		this.data = data;
-	}
+    public void setData(byte[] data) {
+        this.data = data;
+    }
 }

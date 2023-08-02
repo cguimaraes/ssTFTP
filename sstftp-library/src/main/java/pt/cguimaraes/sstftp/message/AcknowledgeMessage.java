@@ -31,40 +31,40 @@ import java.net.InetAddress;
 
 public class AcknowledgeMessage extends TFTPMessage {
 
-	private int blockNumber;
+    private int blockNumber;
 
-	public AcknowledgeMessage() {
-		super();
-		this.opcode = ACK;
-		blockNumber = 0;
-	}
+    public AcknowledgeMessage() {
+        super();
+        this.opcode = ACK;
+        blockNumber = 0;
+    }
 
-	public AcknowledgeMessage(InetAddress address, int port) {
-		super(address, port);
-	}
+    public AcknowledgeMessage(InetAddress address, int port) {
+        super(address, port);
+    }
 
-	public AcknowledgeMessage(int blockNumber) {
-		super();
-		this.opcode = ACK;
-		this.blockNumber = blockNumber;
-	}
+    public AcknowledgeMessage(int blockNumber) {
+        super();
+        this.opcode = ACK;
+        this.blockNumber = blockNumber;
+    }
 
-	public void toBytes(ByteArrayOutputStream stream) {
-		super.toBytes(stream);
-		stream.write((byte) ((blockNumber & 0xFF00) >> 8));
+    public void toBytes(ByteArrayOutputStream stream) {
+        super.toBytes(stream);
+        stream.write((byte) ((blockNumber & 0xFF00) >> 8));
         stream.write((byte) (blockNumber & 0x00FF));
-	}
+    }
 
-	public void fromBytes(ByteArrayInputStream stream) {
-		super.fromBytes(stream);
-		blockNumber = (stream.read() << 8) | stream.read();
-	}
+    public void fromBytes(ByteArrayInputStream stream) {
+        super.fromBytes(stream);
+        blockNumber = (stream.read() << 8) | stream.read();
+    }
 
-	public int getBlockNumber() {
-		return blockNumber;
-	}
+    public int getBlockNumber() {
+        return blockNumber;
+    }
 
-	public void setBlockNumber(int blockNumber) {
-		this.blockNumber = blockNumber;
-	}
+    public void setBlockNumber(int blockNumber) {
+        this.blockNumber = blockNumber;
+    }
 }

@@ -31,49 +31,49 @@ import java.net.InetAddress;
 
 public abstract class TFTPMessage {
 
-	public final static int RRQ   = 1;
-	public final static int WRQ   = 2;
-	public final static int DATA  = 3;
-	public final static int ACK   = 4;
-	public final static int ERROR = 5;
-	public final static int OACK  = 6;
+    public final static int RRQ = 1;
+    public final static int WRQ = 2;
+    public final static int DATA = 3;
+    public final static int ACK = 4;
+    public final static int ERROR = 5;
+    public final static int OACK = 6;
 
-	protected InetAddress ip;
-	protected int port;
-	protected int opcode;
+    protected InetAddress ip;
+    protected int port;
+    protected int opcode;
 
-	public TFTPMessage() {
-		this.ip = null;
-		this.port = -1;
-	}
+    public TFTPMessage() {
+        this.ip = null;
+        this.port = -1;
+    }
 
-	public TFTPMessage(InetAddress ip, int port) {
-		this.ip = ip;
-		this.port = port;
-	}
+    public TFTPMessage(InetAddress ip, int port) {
+        this.ip = ip;
+        this.port = port;
+    }
 
-	public InetAddress getIp() {
-		return ip;
-	}
+    public InetAddress getIp() {
+        return ip;
+    }
 
-	public int getPort() {
-		return port;
-	}
+    public int getPort() {
+        return port;
+    }
 
-	public int getOpcode() {
-		return opcode;
-	}
+    public int getOpcode() {
+        return opcode;
+    }
 
-	public void setOpcode(int opcode) {
-		this.opcode = opcode;
-	}
+    public void setOpcode(int opcode) {
+        this.opcode = opcode;
+    }
 
-	public void toBytes(ByteArrayOutputStream stream) {
-		stream.write((byte) ((opcode & 0xFF00) >> 8));
+    public void toBytes(ByteArrayOutputStream stream) {
+        stream.write((byte) ((opcode & 0xFF00) >> 8));
         stream.write((byte) (opcode & 0x00FF));
-	}
+    }
 
-	public void fromBytes(ByteArrayInputStream stream) {
-		opcode = (stream.read() << 8) | stream.read();
-	}
+    public void fromBytes(ByteArrayInputStream stream) {
+        opcode = (stream.read() << 8) | stream.read();
+    }
 }

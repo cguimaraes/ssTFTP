@@ -37,46 +37,49 @@ import pt.cguimaraes.sstftp.socket.TFTPSocket;
 
 public class TFTPServer {
 
-	private TFTPSocket socket;
+    private TFTPSocket socket;
 
-	private String localDir;
-	private int retries;
-	private int timeout;
-	private int blksize;
-	private long tsize;
+    private String localDir;
+    private int retries;
+    private int timeout;
+    private int blksize;
+    private long tsize;
 
-	public TFTPServer(int port, String localDir, int retries, int timeout, int blksize, long tsize) throws SocketException, NoSuchMethodException, SecurityException, UnknownHostException {
-		this.localDir = localDir;
-		this.retries  = retries;
-		this.timeout  = timeout;
-		this.blksize  = blksize;
-		this.tsize  = tsize;
+    public TFTPServer(int port, String localDir, int retries, int timeout, int blksize, long tsize)
+            throws SocketException, NoSuchMethodException, SecurityException, UnknownHostException {
+        this.localDir = localDir;
+        this.retries = retries;
+        this.timeout = timeout;
+        this.blksize = blksize;
+        this.tsize = tsize;
 
-		Method handler = TFTPServer.class.getMethod("handler", new Class[]{TFTPMessage.class});
+        Method handler = TFTPServer.class.getMethod("handler", new Class[] { TFTPMessage.class });
 
-		socket = new TFTPSocket(this, handler);
-		socket.bind(InetAddress.getByName("0.0.0.0"), port);
-		socket.setRetries(retries);
-		socket.setTimeout(timeout);
+        socket = new TFTPSocket(this, handler);
+        socket.bind(InetAddress.getByName("0.0.0.0"), port);
+        socket.setRetries(retries);
+        socket.setTimeout(timeout);
 
-		socket.run();
-	}
+        socket.run();
+    }
 
-	public void send(TFTPMessage msg) {
-		try {
-			socket.send(msg);
-		} catch (IOException e) {
-			Logger.getGlobal().severe(e.getMessage());
-		}
-	}
+    public void send(TFTPMessage msg) {
+        try {
+            socket.send(msg);
+        } catch (IOException e) {
+            Logger.getGlobal().severe(e.getMessage());
+        }
+    }
 
-	// Generic TFTP message handler
-	public void handler(TFTPMessage msg) throws IOException, NoSuchMethodException, SecurityException, SocketException {
-		ServerSession session = null;
+    // Generic TFTP message handler
+    public void handler(TFTPMessage msg)
+            throws IOException, NoSuchMethodException, SecurityException, SocketException, Exception {
+        ServerSession session = null;
 
-		session = new ServerSession(localDir, retries, timeout, blksize, tsize, msg);
+        session = new ServerSession(localDir, retries, timeout, blksize, tsize, msg);
 
-		if(session.isInitialized())
-			session.run();
-	}
+        if (session.isInitialized()) {
+            session.run();
+        }
+    }
 }

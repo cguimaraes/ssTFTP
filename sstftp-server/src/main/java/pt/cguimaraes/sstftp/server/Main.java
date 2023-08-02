@@ -16,131 +16,142 @@ import org.apache.commons.cli.ParseException;
 
 public class Main {
 
-	@SuppressWarnings("static-access")
-	public static void main(String[] args) throws SocketException, NoSuchMethodException, SecurityException, UnknownHostException {
-		Logger logger = Logger.getLogger("sstftp-server");
-		logger.setLevel(Level.ALL);
+    @SuppressWarnings("static-access")
+    public static void main(String[] args)
+            throws SocketException, NoSuchMethodException, SecurityException, UnknownHostException {
+        Logger logger = Logger.getLogger("sstftp-server");
+        logger.setLevel(Level.ALL);
 
-		// create the Options
-		Options options = new Options();
-		options.addOption(OptionBuilder.withLongOpt("help")
-				.withDescription("print this message")
-				.create('h'));
-		options.addOption(OptionBuilder.withLongOpt("port")
-				.withDescription("listening port (default: 69)")
-				.hasArgs(1)
-				.create('p'));
-		options.addOption(OptionBuilder.withLongOpt("directory")
-				.withDescription("path to the directory that contains the files")
-				.hasArgs(1)
-				.isRequired()
-				.create('d'));
-		options.addOption(OptionBuilder.withLongOpt("retries")
-				.withDescription("maximum retries (default: 3)")
-				.hasArgs(1)
-				.create('r'));
-		options.addOption(OptionBuilder.withLongOpt("timeout")
-				.withDescription("timeout to retransmissions (ms) (default: 2000)")
-				.hasArgs(1)
-				.create('t'));
-		options.addOption(OptionBuilder.withLongOpt("blksize")
-				.withDescription("Maximum block size allowed (default: no limit)")
-				.hasArgs(1)
-				.create('b'));
-		options.addOption(OptionBuilder.withLongOpt("tsize")
-				.withDescription("Maximum file size allowed (default: no limit)")
-				.hasArgs(1)
-				.create('s'));
-		options.addOption(OptionBuilder.withLongOpt("log")
-				.withDescription("Log level [0-2] (default: 1)")
-				.hasArgs(1)
-				.create('v'));
+        // create the Options
+        Options options = new Options();
+        options.addOption(OptionBuilder.withLongOpt("help")
+                .withDescription("print this message")
+                .create('h'));
+        options.addOption(OptionBuilder.withLongOpt("port")
+                .withDescription("listening port (default: 69)")
+                .hasArgs(1)
+                .create('p'));
+        options.addOption(OptionBuilder.withLongOpt("directory")
+                .withDescription("path to the directory that contains the files")
+                .hasArgs(1)
+                .isRequired()
+                .create('d'));
+        options.addOption(OptionBuilder.withLongOpt("retries")
+                .withDescription("maximum retries (default: 3)")
+                .hasArgs(1)
+                .create('r'));
+        options.addOption(OptionBuilder.withLongOpt("timeout")
+                .withDescription("timeout to retransmissions (ms) (default: 2000)")
+                .hasArgs(1)
+                .create('t'));
+        options.addOption(OptionBuilder.withLongOpt("blksize")
+                .withDescription("Maximum block size allowed (default: no limit)")
+                .hasArgs(1)
+                .create('b'));
+        options.addOption(OptionBuilder.withLongOpt("tsize")
+                .withDescription("Maximum file size allowed (default: no limit)")
+                .hasArgs(1)
+                .create('s'));
+        options.addOption(OptionBuilder.withLongOpt("log")
+                .withDescription("Log level [0-2] (default: 1)")
+                .hasArgs(1)
+                .create('v'));
 
-		int port = 69;
-		String localDir = "";
-		int retries = 3;
-		int timeout = 2000;
-		int blksize = -1;
-		long tsize = -1;
+        int port = 69;
+        String localDir = "";
+        int retries = 3;
+        int timeout = 2000;
+        int blksize = -1;
+        long tsize = -1;
 
-		try {
-			CommandLineParser parser = new GnuParser();
-			CommandLine line = parser.parse(options, args);
+        try {
+            CommandLineParser parser = new GnuParser();
+            CommandLine line = parser.parse(options, args);
 
-			// If help is defined
-			if(line.hasOption('h')) {
-				HelpFormatter formatter = new HelpFormatter();
-				formatter.printHelp(80, "sstftp ", "", options, "", true);
-				System.exit(0);
-			}
+            // If help is defined
+            if (line.hasOption('h')) {
+                HelpFormatter formatter = new HelpFormatter();
+                formatter.printHelp(80, "sstftp ", "", options, "", true);
+                System.exit(0);
+            }
 
-			// Parse action
-			localDir = line.getOptionValue('d').toLowerCase();
-			localDir += (localDir.charAt(localDir.length() - 1) == '/' ? "" : "/");
-			if(!new File(localDir).exists())
-				throw new ParseException("Local directory does not exist");
+            // Parse action
+            localDir = line.getOptionValue('d').toLowerCase();
+            localDir += (localDir.charAt(localDir.length() - 1) == '/' ? "" : "/");
+            if (!new File(localDir).exists()) {
+                throw new ParseException("Local directory does not exist");
+            }
 
-			// Parse port number
-			if(line.hasOption('p')) {
-				port = Integer.parseInt(line.getOptionValue('p'));
-				if(port < 0 || port > 65535)
-					throw new ParseException("Invalid port number");
-			}
+            // Parse port number
+            if (line.hasOption('p')) {
+                port = Integer.parseInt(line.getOptionValue('p'));
+                if (port < 0 || port > 65535) {
+                    throw new ParseException("Invalid port number");
+                }
+            }
 
-			// Parse maximum retries
-			if(line.hasOption('r')) {
-				retries = Integer.parseInt(line.getOptionValue('r'));
-				if(retries < 0)
-					throw new ParseException("Invalid maximum retries value");
-			}
+            // Parse maximum retries
+            if (line.hasOption('r')) {
+                retries = Integer.parseInt(line.getOptionValue('r'));
+                if (retries < 0) {
+                    throw new ParseException("Invalid maximum retries value");
+                }
+            }
 
-			// Parse timeout to retransmissions
-			if(line.hasOption('t')) {
-				timeout = Integer.parseInt(line.getOptionValue('t'));
-				if(timeout < 0)
-					throw new ParseException("Invalid timeout to retransmissions");
-			}
+            // Parse timeout to retransmissions
+            if (line.hasOption('t')) {
+                timeout = Integer.parseInt(line.getOptionValue('t'));
+                if (timeout < 0) {
+                    throw new ParseException("Invalid timeout to retransmissions");
+                }
+            }
 
-			// Parse maximum block size allowed
-			if(line.hasOption('b')) {
-				blksize = Integer.parseInt(line.getOptionValue('b'));
-				if(blksize < 0)
-					throw new ParseException("Invalid block size");
-			}
+            // Parse maximum block size allowed
+            if (line.hasOption('b')) {
+                blksize = Integer.parseInt(line.getOptionValue('b'));
+                if (blksize < 0) {
+                    throw new ParseException("Invalid block size");
+                }
+            }
 
-			// Parse receive/send file length
-			if(line.hasOption('s')) {
-				tsize = Long.parseLong(line.getOptionValue('s'));
-				if(tsize < 0)
-					throw new ParseException("Invalid file size");
-			}
+            // Parse receive/send file length
+            if (line.hasOption('s')) {
+                tsize = Long.parseLong(line.getOptionValue('s'));
+                if (tsize < 0) {
+                    throw new ParseException("Invalid file size");
+                }
+            }
 
-			// Parse log level
-			logger.setLevel(Level.ALL); // Default log level
-			if(line.hasOption('v')) {
-				switch (Integer.parseInt(line.getOptionValue('v'))) {
-				case 0:
-					logger.setLevel(Level.OFF);
-					break;
-				case 1:
-					logger.setLevel(Level.INFO);
-					break;
-				case 2:
-					logger.setLevel(Level.ALL);
-					break;
-				default:
-					throw new ParseException("Invalid log level");
-				}
-			}
+            // Parse log level
+            logger.setLevel(Level.ALL); // Default log level
+            if (line.hasOption('v')) {
+                switch (Integer.parseInt(line.getOptionValue('v'))) {
+                    case 0: {
+                        logger.setLevel(Level.OFF);
+                        break;
+                    }
+                    case 1: {
+                        logger.setLevel(Level.INFO);
+                        break;
+                    }
+                    case 2: {
+                        logger.setLevel(Level.ALL);
+                        break;
+                    }
+                    default: {
+                        throw new ParseException("Invalid log level");
+                    }
+                }
+            }
 
-		} catch (ParseException e) {
-			logger.severe(e.getMessage());
+        } catch (ParseException e) {
+            logger.severe(e.getMessage());
 
-			HelpFormatter formatter = new HelpFormatter();
-			formatter.printHelp(80, "sstftp-server ", "", options, "", true);
-			System.exit(1);
-		}
+            HelpFormatter formatter = new HelpFormatter();
+            formatter.printHelp(80, "sstftp-server ", "", options, "", true);
+            System.exit(1);
+        }
 
-		new TFTPServer(port, localDir, retries, timeout, blksize, tsize);
-	}
+        new TFTPServer(port, localDir, retries, timeout, blksize, tsize);
+    }
 }

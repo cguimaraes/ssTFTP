@@ -50,288 +50,310 @@ import pt.cguimaraes.sstftp.socket.TFTPSocket;
 
 public class ServerSession {
 
-	private TFTPSocket socket;
+    private TFTPSocket socket;
 
-	private int bSize;
-	private int bSizeMax;
-	private long fileSize;
-	private long tSizeMax;
-	private int opcode;
-	private String mode;
-	private HashMap<String, String> options;
+    private int bSize;
+    private int bSizeMax;
+    private long fileSize;
+    private long tSizeMax;
+    private int opcode;
+    private String mode;
+    private HashMap<String, String> options;
 
-	private RandomAccessFile file;
+    private RandomAccessFile file;
 
-	private boolean sentLast = false;
-	private boolean initialized = true;
+    private boolean sentLast = false;
+    private boolean initialized = true;
 
-	public ServerSession(String localDir, int retries, int timeout, int bSizeMax, long tSizeMax, TFTPMessage msg) throws NoSuchMethodException, SecurityException, SocketException
-	{
-		// Initialize TFTP Socket
-		Method handler = null;
-		switch(msg.getOpcode()) {
-			case TFTPMessage.RRQ: {
-				handler = ServerSession.class.getMethod("handler_get", new Class[]{TFTPMessage.class});
-			} break;
+    public ServerSession(String localDir, int retries, int timeout, int bSizeMax, long tSizeMax, TFTPMessage msg)
+            throws NoSuchMethodException, SecurityException, SocketException, Exception {
+        // Initialize TFTP Socket
+        Method handler = null;
+        switch (msg.getOpcode()) {
+            case TFTPMessage.RRQ: {
+                handler = ServerSession.class.getMethod("handler_get", new Class[] { TFTPMessage.class });
+                break;
+            }
 
-			case TFTPMessage.WRQ: {
-				handler = ServerSession.class.getMethod("handler_put", new Class[]{TFTPMessage.class});
-			} break;
-		}
+            case TFTPMessage.WRQ: {
+                handler = ServerSession.class.getMethod("handler_put", new Class[] { TFTPMessage.class });
+                break;
+            }
 
-		this.socket = new TFTPSocket(msg.getIp(), msg.getPort(), this, handler);
-		this.socket.setRetries(retries);
-		this.socket.setTimeout(timeout);
+            default: {
+                throw new Exception("Invalid initial request message type");
+            }
+        }
 
-		// Configure session
-		this.bSizeMax = bSizeMax;
-		this.bSize = 512; // Default block size
-		this.tSizeMax = tSizeMax;
-		this.fileSize = -1;
-		try {
-			switch(msg.getOpcode()) {
-				case TFTPMessage.RRQ: {
-					ReadRequestMessage msgRRQ = (ReadRequestMessage) msg;
-					this.mode = msgRRQ.getMode();
-					this.opcode = msgRRQ.getOpcode();
-					this.options = msgRRQ.getOptions();
+        this.socket = new TFTPSocket(msg.getIp(), msg.getPort(), this, handler);
+        this.socket.setRetries(retries);
+        this.socket.setTimeout(timeout);
 
-					file = new RandomAccessFile(localDir + msgRRQ.getFileName(), "r");
-				} break;
+        // Configure session
+        this.bSizeMax = bSizeMax;
+        this.bSize = 512; // Default block size
+        this.tSizeMax = tSizeMax;
+        this.fileSize = -1;
+        try {
+            switch (msg.getOpcode()) {
+                case TFTPMessage.RRQ: {
+                    ReadRequestMessage msgRRQ = (ReadRequestMessage) msg;
+                    this.mode = msgRRQ.getMode();
+                    this.opcode = msgRRQ.getOpcode();
+                    this.options = msgRRQ.getOptions();
 
-				case TFTPMessage.WRQ: {
-					WriteRequestMessage msgWRQ = (WriteRequestMessage) msg;
-					this.mode = msgWRQ.getMode();
-					this.opcode = msgWRQ.getOpcode();
-					this.options = msgWRQ.getOptions();
+                    file = new RandomAccessFile(localDir + msgRRQ.getFileName(), "r");
+                    break;
+                }
 
-					file = new RandomAccessFile(localDir + msgWRQ.getFileName(), "rw");
-				} break;
-			}
-		} catch (FileNotFoundException e) {
-			initialized = false;
-			ErrorMessage msgError = new ErrorMessage(ErrorMessage.FILE_NOT_FOUND);
-			send(msgError);
+                case TFTPMessage.WRQ: {
+                    WriteRequestMessage msgWRQ = (WriteRequestMessage) msg;
+                    this.mode = msgWRQ.getMode();
+                    this.opcode = msgWRQ.getOpcode();
+                    this.options = msgWRQ.getOptions();
 
-			Logger.getGlobal().info("File not found");
-		}
+                    file = new RandomAccessFile(localDir + msgWRQ.getFileName(), "rw");
+                    break;
+                }
 
-		socket.run();
-	}
+                default: {
+                    // Do nothing
+                    break;
+                }
+            }
+        } catch (FileNotFoundException e) {
+            initialized = false;
+            ErrorMessage msgError = new ErrorMessage(ErrorMessage.FILE_NOT_FOUND);
+            send(msgError);
 
-	// Send TFTP message via current session
-	public void send(TFTPMessage msg) {
-		try {
-			socket.send(msg);
-		} catch (IOException e) {
-			Logger.getGlobal().severe(e.getMessage());
-		}
-	}
+            Logger.getGlobal().info("File not found");
+        }
 
-	// TFTP message handler for GET action
-	public void handler_get(TFTPMessage msg) {
-		switch(msg.getOpcode()) {
-			case TFTPMessage.ACK: {
-				AcknowledgeMessage msgAck = (AcknowledgeMessage) msg;
-				handleAcknowledge(msgAck);
-			} break;
+        socket.run();
+    }
 
-			case TFTPMessage.ERROR: {
-				ErrorMessage msgError = (ErrorMessage) msg;
-				handleError(msgError);
-			} break;
+    // Send TFTP message via current session
+    public void send(TFTPMessage msg) {
+        try {
+            socket.send(msg);
+        } catch (IOException e) {
+            Logger.getGlobal().severe(e.getMessage());
+        }
+    }
 
-			default: {
-				ErrorMessage msgError = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
-				send(msgError);
+    // TFTP message handler for GET action
+    public void handler_get(TFTPMessage msg) {
+        switch (msg.getOpcode()) {
+            case TFTPMessage.ACK: {
+                AcknowledgeMessage msgAck = (AcknowledgeMessage) msg;
+                handleAcknowledge(msgAck);
+                break;
+            }
 
-				Logger.getGlobal().warning("Illegal TFTP Operation");
-				System.exit(1);
-				break;
-			}
-		}
-	}
+            case TFTPMessage.ERROR: {
+                ErrorMessage msgError = (ErrorMessage) msg;
+                handleError(msgError);
+                break;
+            }
 
-	// TFTP message handler for PUT action
-	public void handler_put(TFTPMessage msg) {
-		switch(msg.getOpcode()) {
-			case TFTPMessage.DATA: {
-				DataMessage msgData = (DataMessage) msg;
-				handleData(msgData);
-			} break;
+            default: {
+                ErrorMessage msgError = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
+                send(msgError);
 
-			case TFTPMessage.ERROR: {
-				ErrorMessage msgError = (ErrorMessage) msg;
-				handleError(msgError);
-			} break;
+                Logger.getGlobal().warning("Illegal TFTP Operation");
+                System.exit(1);
+                break;
+            }
+        }
+    }
 
-			default: {
-				ErrorMessage msgError = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
-				send(msgError);
+    // TFTP message handler for PUT action
+    public void handler_put(TFTPMessage msg) {
+        switch (msg.getOpcode()) {
+            case TFTPMessage.DATA: {
+                DataMessage msgData = (DataMessage) msg;
+                handleData(msgData);
+                break;
+            }
 
-				Logger.getGlobal().warning("Illegal TFTP Operation");
-				System.exit(1);
-				break;
-			}
-		}
-	}
+            case TFTPMessage.ERROR: {
+                ErrorMessage msgError = (ErrorMessage) msg;
+                handleError(msgError);
+                break;
+            }
 
-	// Handle TFTP Data message: write data to file
-	private void handleData(DataMessage dataMsg) {
-		try {
-			if(mode.equals("octet")) {
-				file.write(dataMsg.getData(), 0, dataMsg.getData().length);
-			} else if(mode.equals("netascii")) {
-				@SuppressWarnings("resource")
-				FromNetASCIIOutputStream is = new FromNetASCIIOutputStream(Channels.newOutputStream(file.getChannel()));
-				is.write(dataMsg.getData(), 0, dataMsg.getData().length);
-			}
-		} catch (IOException e) {
-			ErrorMessage msgError = new ErrorMessage(ErrorMessage.ACCESS_VIOLATION);
-			send(msgError);
+            default: {
+                ErrorMessage msgError = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
+                send(msgError);
 
-			Logger.getGlobal().warning("Cannot write on file");
-			socket.close();
-			return;
-		}
+                Logger.getGlobal().warning("Illegal TFTP Operation");
+                System.exit(1);
+                break;
+            }
+        }
+    }
 
-		// Acknowledge the TFTP Data message
-		AcknowledgeMessage msgAck = new AcknowledgeMessage(dataMsg.getBlockNumber());
-		send(msgAck);
+    // Handle TFTP Data message: write data to file
+    private void handleData(DataMessage dataMsg) {
+        try {
+            if (mode.equals("octet")) {
+                file.write(dataMsg.getData(), 0, dataMsg.getData().length);
+            } else if (mode.equals("netascii")) {
+                @SuppressWarnings("resource")
+                FromNetASCIIOutputStream is = new FromNetASCIIOutputStream(Channels.newOutputStream(file.getChannel()));
+                is.write(dataMsg.getData(), 0, dataMsg.getData().length);
+            }
+        } catch (IOException e) {
+            ErrorMessage msgError = new ErrorMessage(ErrorMessage.ACCESS_VIOLATION);
+            send(msgError);
 
-		// If data length lower than block size, transfer is complete
-		if(dataMsg.getData().length < bSize) {
-			Logger.getGlobal().info("Transfer complete");
-			try {
-				if(fileSize != -1 && file.length() != fileSize)
-					Logger.getGlobal().warning("File size is different from the transfer size reported by the TFTP Server.");
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+            Logger.getGlobal().warning("Cannot write on file");
+            socket.close();
+            return;
+        }
 
-			socket.close();
-			return;
-		}
-	}
+        // Acknowledge the TFTP Data message
+        AcknowledgeMessage msgAck = new AcknowledgeMessage(dataMsg.getBlockNumber());
+        send(msgAck);
 
-	// Handle TFTP Acknowledge message: send data to server
-	private void handleAcknowledge(AcknowledgeMessage ackMsg) {
-		byte[] b = new byte[bSize];
+        // If data length lower than block size, transfer is complete
+        if (dataMsg.getData().length < bSize) {
+            Logger.getGlobal().info("Transfer complete");
+            try {
+                if (fileSize != -1 && file.length() != fileSize) {
+                    Logger.getGlobal()
+                            .warning("File size is different from the transfer size reported by the TFTP Server.");
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
 
-		try {
-			int n = -1;
+            socket.close();
+            return;
+        }
+    }
 
-			if(mode.equals("octet")) {
-				n = file.read(b);
-			} else if(mode.equals("netascii")) {
-				@SuppressWarnings("resource")
-				ToNetASCIIInputStream is = new ToNetASCIIInputStream(Channels.newInputStream(file.getChannel()));
-				n = is.read(b);
-			}
+    // Handle TFTP Acknowledge message: send data to server
+    private void handleAcknowledge(AcknowledgeMessage ackMsg) {
+        byte[] b = new byte[bSize];
 
-			// If data to send is lower than block size, transfer is complete
-			// Note: transfer is only complete when acknowledge to the last
-			//       TFTP Data message is received
-			if (n < bSize) {
-				if(!sentLast) {
-					sentLast = true;
+        try {
+            int n = -1;
 
-					// If file.length % bSize == 0, send last data packet
-					// with no data
-					if(n == -1)
-						n = 0;
-				} else {
-					Logger.getGlobal().info("Transfer complete");
-					socket.close();
-					return;
-				}
-			}
+            if (mode.equals("octet")) {
+                n = file.read(b);
+            } else if (mode.equals("netascii")) {
+                @SuppressWarnings("resource")
+                ToNetASCIIInputStream is = new ToNetASCIIInputStream(Channels.newInputStream(file.getChannel()));
+                n = is.read(b);
+            }
 
-			DataMessage msgData = new DataMessage(ackMsg.getBlockNumber() + 1, Arrays.copyOfRange(b, 0, n));
-			send(msgData);
-		} catch (IOException e) {
-			ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.ACCESS_VIOLATION);
-			send(errorMsg);
+            // If data to send is lower than block size, transfer is complete
+            // Note: transfer is only complete when acknowledge to the last
+            // TFTP Data message is received
+            if (n < bSize) {
+                if (!sentLast) {
+                    sentLast = true;
 
-			Logger.getGlobal().warning("Cannot read file");
-			socket.close();
-			return;
-		}
-	}
+                    // If file.length % bSize == 0, send last data packet
+                    // with no data
+                    if (n == -1) {
+                        n = 0;
+                    }
+                } else {
+                    Logger.getGlobal().info("Transfer complete");
+                    socket.close();
+                    return;
+                }
+            }
 
-	// Handle TFTP Error message
-	private void handleError(ErrorMessage msgError) {
-		Logger.getGlobal().info("Error (" + msgError.getErrorCode() + "): " + msgError.getErrorMsg());
-		socket.close();
-		return;
-	}
+            DataMessage msgData = new DataMessage(ackMsg.getBlockNumber() + 1, Arrays.copyOfRange(b, 0, n));
+            send(msgData);
+        } catch (IOException e) {
+            ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.ACCESS_VIOLATION);
+            send(errorMsg);
 
-	// Start session that will handle the TFTP client request
-	public void run()
-	{
-		// Parse TFTP Options
-		for(Entry<String, String> entry : options.entrySet()) {
-			switch(entry.getKey()) {
-				case "blksize": {
-					int tmp = Integer.parseInt(entry.getValue());
-					if(bSizeMax == -1 || bSizeMax >= tmp)
-						bSize = tmp;
-					else {
-						bSize = bSizeMax;
-						entry.setValue(Integer.toString(bSize));
-					}
-				} break;
+            Logger.getGlobal().warning("Cannot read file");
+            socket.close();
+            return;
+        }
+    }
 
-				case "tsize": {
-					switch(opcode) {
-						case TFTPMessage.RRQ: {
-							try {
-								entry.setValue(Long.toString(file.length()));
-							} catch (IOException e) {
-								e.printStackTrace();
-							}
-						} break;
+    // Handle TFTP Error message
+    private void handleError(ErrorMessage msgError) {
+        Logger.getGlobal().info("Error (" + msgError.getErrorCode() + "): " + msgError.getErrorMsg());
+        socket.close();
+        return;
+    }
 
-						case TFTPMessage.WRQ: {
-							fileSize = Integer.parseInt(entry.getValue());
-							if(tSizeMax != -1 && fileSize > tSizeMax) {
-								Logger.getGlobal().warning("File to upload exceeds the maximum size allowed");
-								ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.DISK_FULL_OR_ALLOCATION_EXCEEDED);
-								send(errorMsg);
+    // Start session that will handle the TFTP client request
+    public void run() {
+        // Parse TFTP Options
+        for (Entry<String, String> entry : options.entrySet()) {
+            switch (entry.getKey()) {
+                case "blksize": {
+                    int tmp = Integer.parseInt(entry.getValue());
+                    if (bSizeMax == -1 || bSizeMax >= tmp)
+                        bSize = tmp;
+                    else {
+                        bSize = bSizeMax;
+                        entry.setValue(Integer.toString(bSize));
+                    }
+                    break;
+                }
 
-								socket.close();
-								return;
-							}
-							
-						} break;
-					}
-				} break;
+                case "tsize": {
+                    switch (opcode) {
+                        case TFTPMessage.RRQ: {
+                            try {
+                                entry.setValue(Long.toString(file.length()));
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                            break;
+                        }
 
-				default:
-					// Option not supported
-					options.remove(entry.getKey());
-			}
-		}
+                        case TFTPMessage.WRQ: {
+                            fileSize = Integer.parseInt(entry.getValue());
+                            if (tSizeMax != -1 && fileSize > tSizeMax) {
+                                Logger.getGlobal().warning("File to upload exceeds the maximum size allowed");
+                                ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.DISK_FULL_OR_ALLOCATION_EXCEEDED);
+                                send(errorMsg);
 
-		if(options.size() != 0) {
-			OptionAcknowledgeMessage msgOAck = new OptionAcknowledgeMessage(options);
-			send(msgOAck);
+                                socket.close();
+                                return;
+                            }
+                            break;
+                        }
+                    }
+                    break;
+                }
 
-			return;
-		} else {
-			// Response if no options to acknowledge
-			if(opcode == TFTPMessage.RRQ) {
-				// Fake acknowledge message to start sending the file
-				AcknowledgeMessage msgAck = new AcknowledgeMessage(0);
-				handleAcknowledge(msgAck);
-			} else if(opcode == TFTPMessage.WRQ) {
-				AcknowledgeMessage msgAck = new AcknowledgeMessage(0);
-				send(msgAck);
-			}
-		}
-	}
+                default:
+                    // Option not supported
+                    options.remove(entry.getKey());
+            }
+        }
 
-	boolean isInitialized() {
-		return initialized;
-	}
+        if (options.size() != 0) {
+            OptionAcknowledgeMessage msgOAck = new OptionAcknowledgeMessage(options);
+            send(msgOAck);
+
+            return;
+        } else {
+            // Response if no options to acknowledge
+            if (opcode == TFTPMessage.RRQ) {
+                // Fake acknowledge message to start sending the file
+                AcknowledgeMessage msgAck = new AcknowledgeMessage(0);
+                handleAcknowledge(msgAck);
+            } else if (opcode == TFTPMessage.WRQ) {
+                AcknowledgeMessage msgAck = new AcknowledgeMessage(0);
+                send(msgAck);
+            }
+        }
+    }
+
+    boolean isInitialized() {
+        return initialized;
+    }
 }

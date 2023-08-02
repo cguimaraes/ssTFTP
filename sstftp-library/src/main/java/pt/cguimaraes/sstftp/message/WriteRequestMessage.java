@@ -33,119 +33,119 @@ import java.util.Map.Entry;
 
 public class WriteRequestMessage extends TFTPMessage {
 
-	private String fileName;
-	private String mode;
-	private HashMap<String, String> options;
+    private String fileName;
+    private String mode;
+    private HashMap<String, String> options;
 
-	public WriteRequestMessage() {
-		super();
-		this.opcode = WRQ;
-		this.options = new HashMap<String, String>();
-	}
+    public WriteRequestMessage() {
+        super();
+        this.opcode = WRQ;
+        this.options = new HashMap<String, String>();
+    }
 
-	public WriteRequestMessage(InetAddress address, int port) {
-		super(address, port);
-		this.options = new HashMap<String, String>();
-	}
+    public WriteRequestMessage(InetAddress address, int port) {
+        super(address, port);
+        this.options = new HashMap<String, String>();
+    }
 
-	public WriteRequestMessage(String fileName, String mode) {
-		super();
-		this.opcode = WRQ;
-		this.fileName = fileName;
-		this.mode = mode;
-		this.options = new HashMap<String, String>();
-	}
+    public WriteRequestMessage(String fileName, String mode) {
+        super();
+        this.opcode = WRQ;
+        this.fileName = fileName;
+        this.mode = mode;
+        this.options = new HashMap<String, String>();
+    }
 
-	public WriteRequestMessage(String fileName, String mode, HashMap<String, String> options) {
-		super();
-		this.opcode = WRQ;
-		this.fileName = fileName;
-		this.mode = mode;
-		this.options = options;
-	}
+    public WriteRequestMessage(String fileName, String mode, HashMap<String, String> options) {
+        super();
+        this.opcode = WRQ;
+        this.fileName = fileName;
+        this.mode = mode;
+        this.options = options;
+    }
 
-	public void toBytes(ByteArrayOutputStream stream) {
-		super.toBytes(stream);
+    public void toBytes(ByteArrayOutputStream stream) {
+        super.toBytes(stream);
 
-		byte[] tmp = fileName.getBytes();
-		stream.write(tmp, 0, tmp.length);
-		stream.write(0);
-		tmp = mode.getBytes();
-		stream.write(tmp, 0, tmp.length);
-		stream.write(0);
+        byte[] tmp = fileName.getBytes();
+        stream.write(tmp, 0, tmp.length);
+        stream.write(0);
+        tmp = mode.getBytes();
+        stream.write(tmp, 0, tmp.length);
+        stream.write(0);
 
-		for(Entry<String, String> entry : options.entrySet()) {
-		    tmp = entry.getKey().getBytes();
-		    stream.write(tmp, 0, tmp.length);
-			stream.write(0);
+        for (Entry<String, String> entry : options.entrySet()) {
+            tmp = entry.getKey().getBytes();
+            stream.write(tmp, 0, tmp.length);
+            stream.write(0);
 
-			tmp = entry.getValue().getBytes();
-			stream.write(tmp, 0, tmp.length);
-			stream.write(0);
-		}
-	}
+            tmp = entry.getValue().getBytes();
+            stream.write(tmp, 0, tmp.length);
+            stream.write(0);
+        }
+    }
 
-	public void fromBytes(ByteArrayInputStream stream) {
-		super.fromBytes(stream);
+    public void fromBytes(ByteArrayInputStream stream) {
+        super.fromBytes(stream);
 
-		StringBuilder strBuilder = new StringBuilder();
-		byte tmp;
-		while((tmp = (byte) stream.read()) != 0x00) {
-			strBuilder.append((char)tmp);
-		}
-		fileName = strBuilder.toString();
+        StringBuilder strBuilder = new StringBuilder();
+        byte tmp;
+        while ((tmp = (byte) stream.read()) != 0x00) {
+            strBuilder.append((char) tmp);
+        }
+        fileName = strBuilder.toString();
 
-		strBuilder = new StringBuilder();
-		while((tmp = (byte) stream.read()) != 0x00) {
-			strBuilder.append((char)tmp);
-		}
-		mode = strBuilder.toString();
+        strBuilder = new StringBuilder();
+        while ((tmp = (byte) stream.read()) != 0x00) {
+            strBuilder.append((char) tmp);
+        }
+        mode = strBuilder.toString();
 
-		while(stream.available() > 0) {
-			String opt;
-			String value;
+        while (stream.available() > 0) {
+            String opt;
+            String value;
 
-			strBuilder = new StringBuilder();
-			while((tmp = (byte) stream.read()) != 0x00) {
-				strBuilder.append((char)tmp);
-			}
-			opt = strBuilder.toString();
+            strBuilder = new StringBuilder();
+            while ((tmp = (byte) stream.read()) != 0x00) {
+                strBuilder.append((char) tmp);
+            }
+            opt = strBuilder.toString();
 
-			strBuilder = new StringBuilder();
-			while((tmp = (byte) stream.read()) != 0x00) {
-				strBuilder.append((char)tmp);
-			}
-			value = strBuilder.toString();
+            strBuilder = new StringBuilder();
+            while ((tmp = (byte) stream.read()) != 0x00) {
+                strBuilder.append((char) tmp);
+            }
+            value = strBuilder.toString();
 
-			options.put(opt, value);
-		}
-	}
+            options.put(opt, value);
+        }
+    }
 
-	public String getFileName() {
-		return fileName;
-	}
+    public String getFileName() {
+        return fileName;
+    }
 
-	public void setFileName(String fileName) {
-		this.fileName = fileName;
-	}
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
 
-	public String getMode() {
-		return mode;
-	}
+    public String getMode() {
+        return mode;
+    }
 
-	public void setMode(String mode) {
-		this.mode = mode;
-	}
+    public void setMode(String mode) {
+        this.mode = mode;
+    }
 
-	public HashMap<String, String> getOptions() {
-		return options;
-	}
+    public HashMap<String, String> getOptions() {
+        return options;
+    }
 
-	public void setOptions(HashMap<String, String> options) {
-		this.options = options;
-	}
+    public void setOptions(HashMap<String, String> options) {
+        this.options = options;
+    }
 
-	public void setOption(String opt, String value) {
-		options.put(opt, value);
-	}
+    public void setOption(String opt, String value) {
+        options.put(opt, value);
+    }
 }
