@@ -177,8 +177,10 @@ public class TFTPSocket implements Runnable {
 					msg = msgData;
 
 					// If next data block was received cancel timer
-					if(lastAck + 1 == msgData.getBlockNumber())
+					if(lastAck + 1 == msgData.getBlockNumber()) {
 						timer.cancel();
+						timer.purge();
+					}
 
 				} break;
 
@@ -188,12 +190,15 @@ public class TFTPSocket implements Runnable {
 					msg = msgAck;
 
 					// If acknowledge to the current data block was received cancel timer
-					if(lastBlock == msgAck.getBlockNumber())
+					if(lastBlock == msgAck.getBlockNumber()) {
 						timer.cancel();
+						timer.purge();
+					}
 				} break;
 
 				case TFTPMessage.ERROR: {
 					timer.cancel();
+					timer.purge();
 
 					ErrorMessage msgError = new ErrorMessage(recvPacket.getAddress(), recvPacket.getPort());
 					msgError.fromBytes(new ByteArrayInputStream(recvPacket.getData(), 0, recvPacket.getLength()));
@@ -202,6 +207,7 @@ public class TFTPSocket implements Runnable {
 
 				case TFTPMessage.OACK: {
 					timer.cancel();
+					timer.purge();
 
 					OptionAcknowledgeMessage msgOAck = new OptionAcknowledgeMessage(recvPacket.getAddress(), recvPacket.getPort());
 					msgOAck.fromBytes(new ByteArrayInputStream(recvPacket.getData(), 0, recvPacket.getLength()));
@@ -224,6 +230,8 @@ public class TFTPSocket implements Runnable {
 
 	public void close() {
 		timer.cancel();
+		timer.purge();
+
 		socket.close();
 		running = false;
 	}
