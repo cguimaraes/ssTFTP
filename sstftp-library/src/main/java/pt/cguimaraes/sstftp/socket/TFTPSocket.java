@@ -83,7 +83,6 @@ public class TFTPSocket implements Runnable {
 
 		this.externalClass = externalClass;
 		this.externalHandler = externalHandler;
-		this.timer = new Timer();
 	}
 
 	public TFTPSocket(InetAddress ipAddress, int port, Object externalClass, Method externalHandler) throws SocketException {
@@ -94,7 +93,6 @@ public class TFTPSocket implements Runnable {
 
 		this.externalClass = externalClass;
 		this.externalHandler = externalHandler;
-		this.timer = new Timer();
 	}
 
 	public void bind(InetAddress ipAddress, int port) throws SocketException {
@@ -123,6 +121,7 @@ public class TFTPSocket implements Runnable {
 		socket.send(socketPacket);
 
 		// Start timer for retransmissions
+		this.timer = new Timer();
 		this.timer.schedule(new TimerTask() {
 			int i = 0;
 			public void run() {
