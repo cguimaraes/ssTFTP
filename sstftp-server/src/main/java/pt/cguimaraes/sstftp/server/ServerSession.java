@@ -334,7 +334,7 @@ public class ServerSession {
                     if (interval > 0 && interval < 256) { // Always accept interval request by client if in valid range
                         this.socket.setTimeout(interval * 1000);
                     } else {
-                        Logger.getGlobal().warning("Interval option is out of accepted range");
+                        Logger.getGlobal().warning("Received timeout interval option is out of accepted range");
                         ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
                         send(errorMsg);
 
