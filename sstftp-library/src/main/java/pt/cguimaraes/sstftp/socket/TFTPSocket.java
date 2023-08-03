@@ -101,7 +101,7 @@ public class TFTPSocket {
     }
 
     public void send(TFTPMessage msg) {
-        boolean disableRetransmission = false;
+        boolean enableRetransmission = true;
 
         // If message to send is an Data or Acknowledge message
         // update last block or last acknowledge sent respectively
@@ -115,12 +115,11 @@ public class TFTPSocket {
             case TFTPMessage.ACK: {
                 AcknowledgeMessage msgAck = (AcknowledgeMessage) msg;
                 lastAck = msgAck.getBlockNumber();
-                disableRetransmission = true;
                 break;
             }
 
             case TFTPMessage.ERROR: {
-                disableRetransmission = true;
+                enableRetransmission = false;
                 break;
             }
 
@@ -141,7 +140,7 @@ public class TFTPSocket {
         }
 
         // Start timer for retransmissions
-        if (disableRetransmission == false) {
+        if (enableRetransmission == true) {
             this.timer = new Timer();
             this.timer.schedule(new TimerTask() {
                 int i = 0;
