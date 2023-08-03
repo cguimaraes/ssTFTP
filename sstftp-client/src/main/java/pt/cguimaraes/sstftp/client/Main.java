@@ -153,8 +153,8 @@ public class Main {
             // Parse timeout to retransmissions
             if (line.hasOption('t')) {
                 timeout = Integer.parseInt(line.getOptionValue('t'));
-                if (timeout < 0) {
-                    throw new ParseException("Invalid timeout to retransmissions");
+                if (timeout <= 0 || timeout > 255000) {
+                    throw new ParseException("Invalid timeout interval to retransmissions");
                 }
 
                 // Timeout Interval in TFTP is defined in seconds
