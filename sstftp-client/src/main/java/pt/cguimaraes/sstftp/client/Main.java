@@ -156,6 +156,10 @@ public class Main {
                 if (timeout < 0) {
                     throw new ParseException("Invalid timeout to retransmissions");
                 }
+
+                // Timeout Interval in TFTP is defined in seconds
+                long roundUpSec = Math.round((double) (timeout + 500) / 1000);
+                options.put("interval", Long.toString(roundUpSec));
             }
 
             // Parse log level

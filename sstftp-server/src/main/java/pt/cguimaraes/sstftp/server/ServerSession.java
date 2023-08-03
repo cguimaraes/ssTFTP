@@ -329,6 +329,22 @@ public class ServerSession {
                     break;
                 }
 
+                case "interval": {
+                    int interval = Integer.parseInt(entry.getValue());
+                    if (interval > 0 && interval < 256) { // Always accept interval request by client if in valid range
+                        this.socket.setTimeout(interval * 1000);
+                    } else {
+                        Logger.getGlobal().warning("Interval option is out of accepted range");
+                        ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
+                        send(errorMsg);
+
+                        socket.close();
+                        return;
+                    }
+
+                    break;
+                }
+
                 default:
                     // Option not supported
                     options.remove(entry.getKey());
