@@ -147,7 +147,7 @@ public class TFTPSocket {
                 int i = 0;
 
                 public void run() {
-                    if (i > retries) {
+                    if (i < retries) {
                         ++i;
                         try {
                             socket.send(socketPacket);
