@@ -158,7 +158,7 @@ public class Main {
                 }
 
                 // Timeout Interval in TFTP is defined in seconds
-                long roundUpSec = Math.round((double) (timeout + 500) / 1000);
+                long roundUpSec = Double.valueOf(Math.ceil(timeout / 1000.0)).longValue();
                 options.put("interval", Long.toString(roundUpSec));
             }
 
