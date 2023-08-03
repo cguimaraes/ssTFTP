@@ -42,7 +42,7 @@ public class Main {
                 .hasArgs(1)
                 .create('r'));
         arguments.addOption(OptionBuilder.withLongOpt("timeout")
-                .withDescription("timeout to retransmissions (ms) (default: 2000)")
+                .withDescription("timeout interval to retransmissions (ms) [1-255000] (default: 2000)")
                 .hasArgs(1)
                 .create('t'));
         arguments.addOption(OptionBuilder.withLongOpt("blksize")
