@@ -46,7 +46,7 @@ import pt.cguimaraes.sstftp.message.ReadRequestMessage;
 import pt.cguimaraes.sstftp.message.TFTPMessage;
 import pt.cguimaraes.sstftp.message.WriteRequestMessage;
 
-public class TFTPSocket implements Runnable {
+public class TFTPSocket {
 
     // Use default MTU of 1500
     final static int MTU = 1500;
