@@ -63,17 +63,9 @@ public class TFTPServer {
         socket.run();
     }
 
-    public void send(TFTPMessage msg) {
-        try {
-            socket.send(msg);
-        } catch (IOException e) {
-            Logger.getGlobal().severe(e.getMessage());
-        }
-    }
-
     // Generic TFTP message handler
     public void handler(TFTPMessage msg)
-            throws IOException, NoSuchMethodException, SecurityException, SocketException, Exception {
+            throws NoSuchMethodException, SecurityException, SocketException, Exception {
         ServerSession session = null;
 
         session = new ServerSession(localDir, retries, timeout, blksize, tsize, msg);

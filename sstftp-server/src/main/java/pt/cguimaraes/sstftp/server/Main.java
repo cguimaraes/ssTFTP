@@ -3,7 +3,6 @@ package pt.cguimaraes.sstftp.server;
 import java.io.File;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 

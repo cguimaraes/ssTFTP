@@ -85,28 +85,19 @@ public class TFTPClient {
 
         if (action.equals("put")) {
             WriteRequestMessage msgWRQ = new WriteRequestMessage(path, mode, options);
-            send(msgWRQ);
+            socket.send(msgWRQ);
             file = new RandomAccessFile(path, "r");
 
             Logger.getGlobal().info("Uploading " + path + " to server in " + mode + " mode...");
         } else if (action.equals("get")) {
             ReadRequestMessage msgRRQ = new ReadRequestMessage(path, mode, options);
-            send(msgRRQ);
+            socket.send(msgRRQ);
 
             file = new RandomAccessFile(path, "rw");
             Logger.getGlobal().info("Downloading " + path + " from server in " + mode + " mode...");
         }
 
         socket.run();
-    }
-
-    public void send(TFTPMessage msg) {
-        try {
-            socket.send(msg);
-        } catch (IOException e) {
-            Logger.getGlobal().severe(e.getMessage());
-            System.exit(1);
-        }
     }
 
     // TFTP message handler for PUT action
@@ -132,7 +123,7 @@ public class TFTPClient {
 
             default: {
                 ErrorMessage msgError = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
-                send(msgError);
+                socket.send(msgError);
 
                 Logger.getGlobal().warning("Illegal TFTP Operation");
                 System.exit(1);
@@ -164,7 +155,7 @@ public class TFTPClient {
 
             default: {
                 ErrorMessage msgError = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
-                send(msgError);
+                socket.send(msgError);
 
                 Logger.getGlobal().warning("Illegal TFTP Operation");
                 System.exit(1);
@@ -185,7 +176,7 @@ public class TFTPClient {
             }
         } catch (IOException e) {
             ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.ACCESS_VIOLATION);
-            send(errorMsg);
+            socket.send(errorMsg);
 
             Logger.getGlobal().warning("Cannot write on file");
             System.exit(1);
@@ -193,7 +184,7 @@ public class TFTPClient {
 
         // Acknowledge the TFTP Data message
         AcknowledgeMessage msgAck = new AcknowledgeMessage(msgData.getBlockNumber());
-        send(msgAck);
+        socket.send(msgAck);
 
         // If data length lower than block size, transfer is complete
         if (msgData.getData().length < blksize) {
@@ -245,10 +236,10 @@ public class TFTPClient {
             }
 
             DataMessage msgData = new DataMessage(msgAck.getBlockNumber() + 1, Arrays.copyOfRange(b, 0, n));
-            send(msgData);
+            socket.send(msgData);
         } catch (IOException e) {
             ErrorMessage msgError = new ErrorMessage(ErrorMessage.ACCESS_VIOLATION);
-            send(msgError);
+            socket.send(msgError);
 
             Logger.getGlobal().warning("Cannot read file");
             System.exit(1);
@@ -291,7 +282,7 @@ public class TFTPClient {
 
         if (action.compareTo("get") == 0) {
             AcknowledgeMessage ackMsg = new AcknowledgeMessage(0);
-            send(ackMsg);
+            socket.send(ackMsg);
         } else if (action.compareTo("put") == 0) {
             // Fake acknowledge message to start sending the file
             AcknowledgeMessage ackMsg = new AcknowledgeMessage(0);

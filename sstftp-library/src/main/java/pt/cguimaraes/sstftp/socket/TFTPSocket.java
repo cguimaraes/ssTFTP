@@ -100,7 +100,9 @@ public class TFTPSocket {
         socket.bind(new InetSocketAddress(ipAddress, port));
     }
 
-    public void send(TFTPMessage msg) throws IOException {
+    public void send(TFTPMessage msg) {
+        boolean disableRetransmission = false;
+
         // If message to send is an Data or Acknowledge message
         // update last block or last acknowledge sent respectively
         switch (msg.getOpcode()) {
@@ -113,6 +115,12 @@ public class TFTPSocket {
             case TFTPMessage.ACK: {
                 AcknowledgeMessage msgAck = (AcknowledgeMessage) msg;
                 lastAck = msgAck.getBlockNumber();
+                disableRetransmission = true;
+                break;
+            }
+
+            case TFTPMessage.ERROR: {
+                disableRetransmission = true;
                 break;
             }
 
@@ -126,24 +134,30 @@ public class TFTPSocket {
         msg.toBytes(stream);
 
         socketPacket.setData(stream.toByteArray());
-        socket.send(socketPacket);
+        try {
+            socket.send(socketPacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         // Start timer for retransmissions
-        this.timer = new Timer();
-        this.timer.schedule(new TimerTask() {
-            int i = 0;
+        if (disableRetransmission == false) {
+            this.timer = new Timer();
+            this.timer.schedule(new TimerTask() {
+                int i = 0;
 
-            public void run() {
-                if (i > retries) {
-                    ++i;
-                    try {
-                        socket.send(socketPacket);
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                public void run() {
+                    if (i > retries) {
+                        ++i;
+                        try {
+                            socket.send(socketPacket);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
-            }
-        }, timeout, timeout);
+            }, timeout, timeout);
+        }
     }
 
     // Start TFTP socket
