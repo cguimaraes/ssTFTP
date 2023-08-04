@@ -65,7 +65,7 @@ public class ServerSession {
     private boolean sentLast = false;
     private boolean initialized = true;
 
-    public ServerSession(String localDir, int retries, int timeout, int bSizeMax, long tSizeMax, TFTPMessage msg)
+    public ServerSession(String localDir, int retries, int interval, int bSizeMax, long tSizeMax, TFTPMessage msg)
             throws NoSuchMethodException, SecurityException, SocketException, Exception {
         // Initialize TFTP Socket
         Method handler = null;
@@ -87,7 +87,7 @@ public class ServerSession {
 
         this.socket = new TFTPSocket(msg.getIp(), msg.getPort(), this, handler);
         this.socket.setRetries(retries);
-        this.socket.setTimeout(timeout);
+        this.socket.setTimeout(interval);
 
         // Configure session
         this.bSizeMax = bSizeMax;
@@ -124,21 +124,12 @@ public class ServerSession {
         } catch (FileNotFoundException e) {
             initialized = false;
             ErrorMessage msgError = new ErrorMessage(ErrorMessage.FILE_NOT_FOUND);
-            send(msgError);
+            socket.send(msgError);
 
             Logger.getGlobal().info("File not found");
         }
 
         socket.run();
-    }
-
-    // Send TFTP message via current session
-    public void send(TFTPMessage msg) {
-        try {
-            socket.send(msg);
-        } catch (IOException e) {
-            Logger.getGlobal().severe(e.getMessage());
-        }
     }
 
     // TFTP message handler for GET action
@@ -158,7 +149,7 @@ public class ServerSession {
 
             default: {
                 ErrorMessage msgError = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
-                send(msgError);
+                socket.send(msgError);
 
                 Logger.getGlobal().warning("Illegal TFTP Operation");
                 System.exit(1);
@@ -184,7 +175,7 @@ public class ServerSession {
 
             default: {
                 ErrorMessage msgError = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
-                send(msgError);
+                socket.send(msgError);
 
                 Logger.getGlobal().warning("Illegal TFTP Operation");
                 System.exit(1);
@@ -205,7 +196,7 @@ public class ServerSession {
             }
         } catch (IOException e) {
             ErrorMessage msgError = new ErrorMessage(ErrorMessage.ACCESS_VIOLATION);
-            send(msgError);
+            socket.send(msgError);
 
             Logger.getGlobal().warning("Cannot write on file");
             socket.close();
@@ -214,7 +205,7 @@ public class ServerSession {
 
         // Acknowledge the TFTP Data message
         AcknowledgeMessage msgAck = new AcknowledgeMessage(dataMsg.getBlockNumber());
-        send(msgAck);
+        socket.send(msgAck);
 
         // If data length lower than block size, transfer is complete
         if (dataMsg.getData().length < bSize) {
@@ -268,10 +259,10 @@ public class ServerSession {
             }
 
             DataMessage msgData = new DataMessage(ackMsg.getBlockNumber() + 1, Arrays.copyOfRange(b, 0, n));
-            send(msgData);
+            socket.send(msgData);
         } catch (IOException e) {
             ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.ACCESS_VIOLATION);
-            send(errorMsg);
+            socket.send(errorMsg);
 
             Logger.getGlobal().warning("Cannot read file");
             socket.close();
@@ -318,7 +309,7 @@ public class ServerSession {
                             if (tSizeMax != -1 && fileSize > tSizeMax) {
                                 Logger.getGlobal().warning("File to upload exceeds the maximum size allowed");
                                 ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.DISK_FULL_OR_ALLOCATION_EXCEEDED);
-                                send(errorMsg);
+                                socket.send(errorMsg);
 
                                 socket.close();
                                 return;
@@ -326,6 +317,22 @@ public class ServerSession {
                             break;
                         }
                     }
+                    break;
+                }
+
+                case "interval": {
+                    int interval = Integer.parseInt(entry.getValue());
+                    if (interval > 0 && interval < 256) { // Always accept interval request by client if in valid range
+                        this.socket.setTimeout(interval * 1000);
+                    } else {
+                        Logger.getGlobal().warning("Received timeout interval option is out of accepted range");
+                        ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
+                        socket.send(errorMsg);
+
+                        socket.close();
+                        return;
+                    }
+
                     break;
                 }
 
@@ -337,7 +344,7 @@ public class ServerSession {
 
         if (options.size() != 0) {
             OptionAcknowledgeMessage msgOAck = new OptionAcknowledgeMessage(options);
-            send(msgOAck);
+            socket.send(msgOAck);
 
             return;
         } else {
@@ -348,7 +355,7 @@ public class ServerSession {
                 handleAcknowledge(msgAck);
             } else if (opcode == TFTPMessage.WRQ) {
                 AcknowledgeMessage msgAck = new AcknowledgeMessage(0);
-                send(msgAck);
+                socket.send(msgAck);
             }
         }
     }

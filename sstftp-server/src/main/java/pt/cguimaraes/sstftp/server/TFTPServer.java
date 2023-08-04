@@ -30,7 +30,6 @@ import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.logging.Logger;
 
 import pt.cguimaraes.sstftp.message.TFTPMessage;
 import pt.cguimaraes.sstftp.socket.TFTPSocket;
@@ -41,15 +40,15 @@ public class TFTPServer {
 
     private String localDir;
     private int retries;
-    private int timeout;
+    private int interval;
     private int blksize;
     private long tsize;
 
-    public TFTPServer(int port, String localDir, int retries, int timeout, int blksize, long tsize)
+    public TFTPServer(int port, String localDir, int retries, int interval, int blksize, long tsize)
             throws SocketException, NoSuchMethodException, SecurityException, UnknownHostException {
         this.localDir = localDir;
         this.retries = retries;
-        this.timeout = timeout;
+        this.interval = interval;
         this.blksize = blksize;
         this.tsize = tsize;
 
@@ -58,25 +57,17 @@ public class TFTPServer {
         socket = new TFTPSocket(this, handler);
         socket.bind(InetAddress.getByName("0.0.0.0"), port);
         socket.setRetries(retries);
-        socket.setTimeout(timeout);
+        socket.setTimeout(interval);
 
         socket.run();
     }
 
-    public void send(TFTPMessage msg) {
-        try {
-            socket.send(msg);
-        } catch (IOException e) {
-            Logger.getGlobal().severe(e.getMessage());
-        }
-    }
-
     // Generic TFTP message handler
     public void handler(TFTPMessage msg)
-            throws IOException, NoSuchMethodException, SecurityException, SocketException, Exception {
+            throws NoSuchMethodException, SecurityException, SocketException, Exception {
         ServerSession session = null;
 
-        session = new ServerSession(localDir, retries, timeout, blksize, tsize, msg);
+        session = new ServerSession(localDir, retries, interval, blksize, tsize, msg);
 
         if (session.isInitialized()) {
             session.run();

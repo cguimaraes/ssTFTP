@@ -46,7 +46,7 @@ import pt.cguimaraes.sstftp.message.ReadRequestMessage;
 import pt.cguimaraes.sstftp.message.TFTPMessage;
 import pt.cguimaraes.sstftp.message.WriteRequestMessage;
 
-public class TFTPSocket implements Runnable {
+public class TFTPSocket {
 
     // Use default MTU of 1500
     final static int MTU = 1500;
@@ -100,7 +100,9 @@ public class TFTPSocket implements Runnable {
         socket.bind(new InetSocketAddress(ipAddress, port));
     }
 
-    public void send(TFTPMessage msg) throws IOException {
+    public void send(TFTPMessage msg) {
+        boolean enableRetransmission = true;
+
         // If message to send is an Data or Acknowledge message
         // update last block or last acknowledge sent respectively
         switch (msg.getOpcode()) {
@@ -116,6 +118,11 @@ public class TFTPSocket implements Runnable {
                 break;
             }
 
+            case TFTPMessage.ERROR: {
+                enableRetransmission = false;
+                break;
+            }
+
             default: {
                 // Do nothing
                 break;
@@ -126,24 +133,30 @@ public class TFTPSocket implements Runnable {
         msg.toBytes(stream);
 
         socketPacket.setData(stream.toByteArray());
-        socket.send(socketPacket);
+        try {
+            socket.send(socketPacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         // Start timer for retransmissions
-        this.timer = new Timer();
-        this.timer.schedule(new TimerTask() {
-            int i = 0;
+        if (enableRetransmission == true) {
+            this.timer = new Timer();
+            this.timer.schedule(new TimerTask() {
+                int i = 0;
 
-            public void run() {
-                if (i < retries) {
-                    ++i;
-                    try {
-                        socket.send(socketPacket);
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                public void run() {
+                    if (i < retries) {
+                        ++i;
+                        try {
+                            socket.send(socketPacket);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
-            }
-        }, timeout, timeout);
+            }, timeout, timeout);
+        }
     }
 
     // Start TFTP socket

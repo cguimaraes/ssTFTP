@@ -65,10 +65,10 @@ public class Main {
                 .withDescription("maximum retries (default: 3)")
                 .hasArgs(1)
                 .create('r'));
-        arguments.addOption(OptionBuilder.withLongOpt("timeout")
-                .withDescription("timeout to retransmissions (ms) (default: 2000)")
+        arguments.addOption(OptionBuilder.withLongOpt("interval")
+                .withDescription("timeout interval to retransmissions (ms) [1-255000] (default: 2000)")
                 .hasArgs(1)
-                .create('t'));
+                .create('i'));
         arguments.addOption(OptionBuilder.withLongOpt("log")
                 .withDescription("Log level [0-2] (default: 1)")
                 .hasArgs(1)
@@ -82,7 +82,7 @@ public class Main {
         int dstPort = 69;
         int blksize = 512; // Default block size
         int retries = 3;
-        int timeout = 2000;
+        int interval = 2000;
         boolean tsize = true;
         HashMap<String, String> options = new HashMap<String, String>();
 
@@ -150,12 +150,16 @@ public class Main {
                 }
             }
 
-            // Parse timeout to retransmissions
+            // Parse timeout interval to retransmissions
             if (line.hasOption('t')) {
-                timeout = Integer.parseInt(line.getOptionValue('t'));
-                if (timeout < 0) {
-                    throw new ParseException("Invalid timeout to retransmissions");
+                interval = Integer.parseInt(line.getOptionValue('t'));
+                if (interval <= 0 || interval > 255000) {
+                    throw new ParseException("Invalid timeout interval to retransmissions");
                 }
+
+                // Timeout Interval in TFTP is defined in seconds
+                long roundUpSec = Double.valueOf(Math.ceil(interval / 1000.0)).longValue();
+                options.put("interval", Long.toString(roundUpSec));
             }
 
             // Parse log level
@@ -218,6 +222,6 @@ public class Main {
             }
         }
 
-        new TFTPClient(dstIp, dstPort, action, mode, path, retries, timeout, blksize, options);
+        new TFTPClient(dstIp, dstPort, action, mode, path, retries, interval, blksize, options);
     }
 }
