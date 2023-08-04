@@ -48,6 +48,10 @@ public class Main {
                 .withDescription("Maximum block size allowed (default: no limit)")
                 .hasArgs(1)
                 .create('b'));
+        arguments.addOption(OptionBuilder.withLongOpt("windowsize")
+                .withDescription("window size for consecutive blocks [1 - 65535] (default: 1)")
+                .hasArgs(1)
+                .create('w'));
         arguments.addOption(OptionBuilder.withLongOpt("tsize")
                 .withDescription("Maximum file size allowed (default: no limit)")
                 .hasArgs(1)
@@ -62,6 +66,7 @@ public class Main {
         int retries = 3;
         int interval = 2000;
         int blksize = -1;
+        int windowsize = 1; // 1-size window correspond to the original behavior of TFTP
         long tsize = -1;
 
         try {
@@ -114,6 +119,14 @@ public class Main {
                 }
             }
 
+            // Parse window size for consecutive blocks
+            if (line.hasOption('w')) {
+                windowsize = Integer.parseInt(line.getOptionValue('w'));
+                if (windowsize < 1 || windowsize > 65535) {
+                    throw new ParseException("Invalid window size");
+                }
+            }
+
             // Parse receive/send file length
             if (line.hasOption('s')) {
                 tsize = Long.parseLong(line.getOptionValue('s'));
@@ -152,6 +165,6 @@ public class Main {
             System.exit(1);
         }
 
-        new TFTPServer(port, localDir, retries, interval, blksize, tsize);
+        new TFTPServer(port, localDir, retries, interval, blksize, tsize, windowsize);
     }
 }

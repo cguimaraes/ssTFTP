@@ -34,6 +34,8 @@ import java.nio.channels.Channels;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map.Entry;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.logging.Logger;
 
 import org.apache.commons.net.io.FromNetASCIIOutputStream;
@@ -54,6 +56,9 @@ public class ServerSession {
 
     private int bSize;
     private int bSizeMax;
+    private int windowsize;
+    private int retries;
+    private int interval;
     private long fileSize;
     private long tSizeMax;
     private int opcode;
@@ -65,7 +70,14 @@ public class ServerSession {
     private boolean sentLast = false;
     private boolean initialized = true;
 
-    public ServerSession(String localDir, int retries, int interval, int bSizeMax, long tSizeMax, TFTPMessage msg)
+    private Timer timer;
+    private TFTPMessage retransmitMsg;
+
+    private int lastAck = 0;
+    private int lastData = 0;
+
+    public ServerSession(String localDir, int retries, int interval, int bSizeMax, long tSizeMax, int windowsize,
+            TFTPMessage msg)
             throws NoSuchMethodException, SecurityException, SocketException, Exception {
         // Initialize TFTP Socket
         Method handler = null;
@@ -86,14 +98,16 @@ public class ServerSession {
         }
 
         this.socket = new TFTPSocket(msg.getIp(), msg.getPort(), this, handler);
-        this.socket.setRetries(retries);
-        this.socket.setTimeout(interval);
 
         // Configure session
         this.bSizeMax = bSizeMax;
         this.bSize = 512; // Default block size
+        this.retries = retries;
+        this.windowsize = windowsize;
+        this.interval = interval;
         this.tSizeMax = tSizeMax;
         this.fileSize = -1;
+
         try {
             switch (msg.getOpcode()) {
                 case TFTPMessage.RRQ: {
@@ -128,26 +142,27 @@ public class ServerSession {
 
             Logger.getGlobal().info("File not found");
         }
-
-        socket.run();
     }
 
     // TFTP message handler for GET action
     public void handler_get(TFTPMessage msg) {
         switch (msg.getOpcode()) {
             case TFTPMessage.ACK: {
+                stopTimer(timer);
                 AcknowledgeMessage msgAck = (AcknowledgeMessage) msg;
                 handleAcknowledge(msgAck);
                 break;
             }
 
             case TFTPMessage.ERROR: {
+                stopTimer(timer);
                 ErrorMessage msgError = (ErrorMessage) msg;
                 handleError(msgError);
                 break;
             }
 
             default: {
+                stopTimer(timer);
                 ErrorMessage msgError = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
                 socket.send(msgError);
 
@@ -168,12 +183,14 @@ public class ServerSession {
             }
 
             case TFTPMessage.ERROR: {
+                stopTimer(timer);
                 ErrorMessage msgError = (ErrorMessage) msg;
                 handleError(msgError);
                 break;
             }
 
             default: {
+                stopTimer(timer);
                 ErrorMessage msgError = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
                 socket.send(msgError);
 
@@ -185,30 +202,55 @@ public class ServerSession {
     }
 
     // Handle TFTP Data message: write data to file
-    private void handleData(DataMessage dataMsg) {
-        try {
-            if (mode.equals("octet")) {
-                file.write(dataMsg.getData(), 0, dataMsg.getData().length);
-            } else if (mode.equals("netascii")) {
-                @SuppressWarnings("resource")
-                FromNetASCIIOutputStream is = new FromNetASCIIOutputStream(Channels.newOutputStream(file.getChannel()));
-                is.write(dataMsg.getData(), 0, dataMsg.getData().length);
-            }
-        } catch (IOException e) {
-            ErrorMessage msgError = new ErrorMessage(ErrorMessage.ACCESS_VIOLATION);
-            socket.send(msgError);
+    private void handleData(DataMessage msgData) {
+        boolean sendAck = false;
+        if (lastData + 1 == msgData.getBlockNumber()) {
+            lastData = msgData.getBlockNumber();
+            try {
+                if (mode.equals("octet")) {
+                    file.write(msgData.getData(), 0, msgData.getData().length);
+                } else if (mode.equals("netascii")) {
+                    @SuppressWarnings("resource")
+                    FromNetASCIIOutputStream is = new FromNetASCIIOutputStream(
+                            Channels.newOutputStream(file.getChannel()));
+                    is.write(msgData.getData(), 0, msgData.getData().length);
+                }
+            } catch (IOException e) {
+                ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.ACCESS_VIOLATION);
+                socket.send(errorMsg);
 
-            Logger.getGlobal().warning("Cannot write on file");
-            socket.close();
-            return;
+                Logger.getGlobal().warning("Cannot write on file");
+                System.exit(1);
+            }
+        } else {
+            sendAck = true;
         }
 
         // Acknowledge the TFTP Data message
-        AcknowledgeMessage msgAck = new AcknowledgeMessage(dataMsg.getBlockNumber());
-        socket.send(msgAck);
+        if (sendAck == true || lastAck + windowsize == msgData.getBlockNumber()) {
+            stopTimer(timer);
+            AcknowledgeMessage msgAck = new AcknowledgeMessage(msgData.getBlockNumber());
+            lastAck = msgAck.getBlockNumber();
+            socket.send(msgAck);
+
+            timer = new Timer();
+            timer.schedule(new TimerTask() {
+                int i = 0;
+
+                public void run() {
+                    if (i < retries) {
+                        AcknowledgeMessage msgAck = new AcknowledgeMessage(lastData);
+                        lastAck = msgAck.getBlockNumber();
+                        socket.send(msgAck);
+                        i++;
+                    }
+                }
+            }, interval, interval);
+        }
 
         // If data length lower than block size, transfer is complete
-        if (dataMsg.getData().length < bSize) {
+        if (msgData.getData().length < bSize) {
+            stopTimer(timer);
             Logger.getGlobal().info("Transfer complete");
             try {
                 if (fileSize != -1 && file.length() != fileSize) {
@@ -219,24 +261,35 @@ public class ServerSession {
                 e.printStackTrace();
             }
 
-            socket.close();
-            return;
+            System.exit(0);
         }
     }
 
     // Handle TFTP Acknowledge message: send data to server
-    private void handleAcknowledge(AcknowledgeMessage ackMsg) {
-        byte[] b = new byte[bSize];
+    private void handleAcknowledge(AcknowledgeMessage msgAck) {
+        if (msgAck.getBlockNumber() <= lastAck || msgAck.getBlockNumber() > lastAck + windowsize) {
+            return;
+        }
+        retransmitMsg = msgAck;
 
-        try {
+        for (int i = msgAck.getBlockNumber(); i > msgAck.getBlockNumber() + windowsize; i++) {
             int n = -1;
+            byte[] b = new byte[bSize];
+            try {
+                file.seek(i * bSize);
+                if (mode.equals("octet")) {
+                    n = file.read(b);
+                } else if (mode.equals("netascii")) {
+                    @SuppressWarnings("resource")
+                    ToNetASCIIInputStream is = new ToNetASCIIInputStream(Channels.newInputStream(file.getChannel()));
+                    n = is.read(b);
+                }
+            } catch (IOException e) {
+                ErrorMessage msgError = new ErrorMessage(ErrorMessage.ACCESS_VIOLATION);
+                socket.send(msgError);
 
-            if (mode.equals("octet")) {
-                n = file.read(b);
-            } else if (mode.equals("netascii")) {
-                @SuppressWarnings("resource")
-                ToNetASCIIInputStream is = new ToNetASCIIInputStream(Channels.newInputStream(file.getChannel()));
-                n = is.read(b);
+                Logger.getGlobal().warning("Cannot read file");
+                System.exit(1);
             }
 
             // If data to send is lower than block size, transfer is complete
@@ -253,21 +306,25 @@ public class ServerSession {
                     }
                 } else {
                     Logger.getGlobal().info("Transfer complete");
-                    socket.close();
-                    return;
+                    System.exit(0);
                 }
             }
 
-            DataMessage msgData = new DataMessage(ackMsg.getBlockNumber() + 1, Arrays.copyOfRange(b, 0, n));
+            DataMessage msgData = new DataMessage(msgAck.getBlockNumber() + i, Arrays.copyOfRange(b, 0, n));
             socket.send(msgData);
-        } catch (IOException e) {
-            ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.ACCESS_VIOLATION);
-            socket.send(errorMsg);
-
-            Logger.getGlobal().warning("Cannot read file");
-            socket.close();
-            return;
         }
+
+        timer = new Timer();
+        timer.schedule(new TimerTask() {
+            int i = 0;
+
+            public void run() {
+                if (i < retries) {
+                    handleAcknowledge((AcknowledgeMessage) retransmitMsg);
+                    i++;
+                }
+            }
+        }, interval, interval);
     }
 
     // Handle TFTP Error message
@@ -279,6 +336,8 @@ public class ServerSession {
 
     // Start session that will handle the TFTP client request
     public void run() {
+        socket.run();
+
         // Parse TFTP Options
         for (Entry<String, String> entry : options.entrySet()) {
             switch (entry.getKey()) {
@@ -321,9 +380,10 @@ public class ServerSession {
                 }
 
                 case "interval": {
-                    int interval = Integer.parseInt(entry.getValue());
-                    if (interval > 0 && interval < 256) { // Always accept interval request by client if in valid range
-                        this.socket.setTimeout(interval * 1000);
+                    int receivedInterval = Integer.parseInt(entry.getValue());
+                    if (receivedInterval > 0 && receivedInterval < 256) { // Always accept interval request by client if
+                                                                          // in valid range
+                        interval = receivedInterval * 1000;
                     } else {
                         Logger.getGlobal().warning("Received timeout interval option is out of accepted range");
                         ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
@@ -336,6 +396,23 @@ public class ServerSession {
                     break;
                 }
 
+                case "windowsize": {
+                    int receivedWindowsize = Integer.parseInt(entry.getValue());
+                    if (receivedWindowsize > 0 && receivedWindowsize <= windowsize) {
+                        windowsize = receivedWindowsize;
+                    } else {
+                        ErrorMessage msgError = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
+                        socket.send(msgError);
+
+                        Logger.getGlobal()
+                                .warning(
+                                        "Window size is higher than the one defined by client or not in a valid range");
+                        System.exit(1);
+                        break;
+                    }
+                    break;
+                }
+
                 default:
                     // Option not supported
                     options.remove(entry.getKey());
@@ -345,22 +422,26 @@ public class ServerSession {
         if (options.size() != 0) {
             OptionAcknowledgeMessage msgOAck = new OptionAcknowledgeMessage(options);
             socket.send(msgOAck);
-
             return;
-        } else {
-            // Response if no options to acknowledge
-            if (opcode == TFTPMessage.RRQ) {
-                // Fake acknowledge message to start sending the file
-                AcknowledgeMessage msgAck = new AcknowledgeMessage(0);
-                handleAcknowledge(msgAck);
-            } else if (opcode == TFTPMessage.WRQ) {
-                AcknowledgeMessage msgAck = new AcknowledgeMessage(0);
-                socket.send(msgAck);
-            }
+        }
+
+        // Response if no options to acknowledge
+        if (opcode == TFTPMessage.RRQ) {
+            // Fake acknowledge message to start sending the file
+            AcknowledgeMessage msgAck = new AcknowledgeMessage(0);
+            handleAcknowledge(msgAck);
+        } else if (opcode == TFTPMessage.WRQ) {
+            AcknowledgeMessage msgAck = new AcknowledgeMessage(0);
+            socket.send(msgAck);
         }
     }
 
     boolean isInitialized() {
         return initialized;
+    }
+
+    private void stopTimer(Timer timer) {
+        timer.cancel();
+        timer.purge();
     }
 }

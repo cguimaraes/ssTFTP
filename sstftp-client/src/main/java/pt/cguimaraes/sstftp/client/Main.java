@@ -57,6 +57,10 @@ public class Main {
                 .withDescription("block size (default: 512)")
                 .hasArgs(1)
                 .create('b'));
+        arguments.addOption(OptionBuilder.withLongOpt("windowsize")
+                .withDescription("window size for consecutive blocks (default: 1)")
+                .hasArgs(1)
+                .create('w'));
         arguments.addOption(OptionBuilder.withLongOpt("no-tsize")
                 .withDescription("receive/send file length (default: enabled)")
                 .hasArgs(0)
@@ -81,6 +85,7 @@ public class Main {
         InetAddress dstIp = null;
         int dstPort = 69;
         int blksize = 512; // Default block size
+        int windowsize = 1; // 1-size window correspond to the original behavior of TFTP
         int retries = 3;
         int interval = 2000;
         boolean tsize = true;
@@ -134,6 +139,18 @@ public class Main {
                 options.put("blksize", line.getOptionValue('b'));
                 if (Integer.parseInt(line.getOptionValue('b')) < 0) {
                     throw new ParseException("Invalid block size");
+                }
+            }
+
+            // Parse window size for consecutive blocks
+            if (line.hasOption('w')) {
+                windowsize = Integer.parseInt(line.getOptionValue('w'));
+                if (windowsize < 1 || windowsize > 65535) {
+                    throw new ParseException("Invalid window size");
+                }
+
+                if (windowsize != 1) {
+                    options.put("windowsize", Integer.toString(windowsize));
                 }
             }
 
@@ -222,6 +239,8 @@ public class Main {
             }
         }
 
-        new TFTPClient(dstIp, dstPort, action, mode, path, retries, interval, blksize, options);
+        TFTPClient client = new TFTPClient(dstIp, dstPort, action, mode, path, retries, interval, blksize, windowsize,
+                options);
+        client.run();
     }
 }

@@ -42,22 +42,22 @@ public class TFTPServer {
     private int retries;
     private int interval;
     private int blksize;
+    private int windowsize;
     private long tsize;
 
-    public TFTPServer(int port, String localDir, int retries, int interval, int blksize, long tsize)
+    public TFTPServer(int port, String localDir, int retries, int interval, int blksize, long tsize, int windowsize)
             throws SocketException, NoSuchMethodException, SecurityException, UnknownHostException {
         this.localDir = localDir;
         this.retries = retries;
         this.interval = interval;
         this.blksize = blksize;
+        this.windowsize = windowsize;
         this.tsize = tsize;
 
         Method handler = TFTPServer.class.getMethod("handler", new Class[] { TFTPMessage.class });
 
         socket = new TFTPSocket(this, handler);
         socket.bind(InetAddress.getByName("0.0.0.0"), port);
-        socket.setRetries(retries);
-        socket.setTimeout(interval);
 
         socket.run();
     }
@@ -65,10 +65,7 @@ public class TFTPServer {
     // Generic TFTP message handler
     public void handler(TFTPMessage msg)
             throws NoSuchMethodException, SecurityException, SocketException, Exception {
-        ServerSession session = null;
-
-        session = new ServerSession(localDir, retries, interval, blksize, tsize, msg);
-
+        ServerSession session = new ServerSession(localDir, retries, interval, blksize, tsize, windowsize, msg);
         if (session.isInitialized()) {
             session.run();
         }
