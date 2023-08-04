@@ -65,7 +65,7 @@ public class ServerSession {
     private boolean sentLast = false;
     private boolean initialized = true;
 
-    public ServerSession(String localDir, int retries, int timeout, int bSizeMax, long tSizeMax, TFTPMessage msg)
+    public ServerSession(String localDir, int retries, int interval, int bSizeMax, long tSizeMax, TFTPMessage msg)
             throws NoSuchMethodException, SecurityException, SocketException, Exception {
         // Initialize TFTP Socket
         Method handler = null;
@@ -87,7 +87,7 @@ public class ServerSession {
 
         this.socket = new TFTPSocket(msg.getIp(), msg.getPort(), this, handler);
         this.socket.setRetries(retries);
-        this.socket.setTimeout(timeout);
+        this.socket.setTimeout(interval);
 
         // Configure session
         this.bSizeMax = bSizeMax;

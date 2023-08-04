@@ -55,7 +55,9 @@ public class TFTPClient {
 
     private String action;
     private String mode;
+
     private int blksize;
+    private int interval;
     private long fileSize;
     private HashMap<String, String> options;
 
@@ -63,14 +65,15 @@ public class TFTPClient {
     private boolean sentLast = false;
 
     public TFTPClient(InetAddress dstIp, int dstPort, String action, String mode, String path,
-            int retries, int timeout, int blksize, HashMap<String, String> options)
+            int retries, int interval, int blksize, HashMap<String, String> options)
             throws NoSuchMethodException, SecurityException, SocketException, FileNotFoundException {
 
         this.action = action;
         this.mode = mode;
         this.blksize = blksize;
-        this.options = options;
+        this.interval = interval;
         this.fileSize = -1;
+        this.options = options;
 
         Method handler = null;
         if (action.equals("put")) {
@@ -81,7 +84,7 @@ public class TFTPClient {
 
         socket = new TFTPSocket(dstIp, dstPort, this, handler);
         socket.setRetries(retries);
-        socket.setTimeout(timeout);
+        socket.setTimeout(interval);
 
         if (action.equals("put")) {
             WriteRequestMessage msgWRQ = new WriteRequestMessage(path, mode, options);
@@ -268,6 +271,24 @@ public class TFTPClient {
 
                     case "tsize": {
                         fileSize = Long.parseLong(entry.getValue());
+                        break;
+                    }
+
+                    case "interval": {
+                        int receivedInterval = Integer.parseInt(entry.getValue()) * 1000;
+                        if (receivedInterval > 0 && receivedInterval <= interval) {
+                            interval = receivedInterval;
+                            socket.setTimeout(interval);
+                        } else {
+                            ErrorMessage msgError = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
+                            socket.send(msgError);
+
+                            Logger.getGlobal()
+                                    .warning(
+                                            "Timeout interval is higher than the one defined by client or not in a valid range");
+                            System.exit(1);
+                            break;
+                        }
                         break;
                     }
 

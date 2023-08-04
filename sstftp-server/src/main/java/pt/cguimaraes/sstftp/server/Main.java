@@ -40,10 +40,10 @@ public class Main {
                 .withDescription("maximum retries (default: 3)")
                 .hasArgs(1)
                 .create('r'));
-        arguments.addOption(OptionBuilder.withLongOpt("timeout")
+        arguments.addOption(OptionBuilder.withLongOpt("interval")
                 .withDescription("timeout interval to retransmissions (ms) [1-255000] (default: 2000)")
                 .hasArgs(1)
-                .create('t'));
+                .create('i'));
         arguments.addOption(OptionBuilder.withLongOpt("blksize")
                 .withDescription("Maximum block size allowed (default: no limit)")
                 .hasArgs(1)
@@ -60,7 +60,7 @@ public class Main {
         int port = 69;
         String localDir = "";
         int retries = 3;
-        int timeout = 2000;
+        int interval = 2000;
         int blksize = -1;
         long tsize = -1;
 
@@ -98,10 +98,10 @@ public class Main {
                 }
             }
 
-            // Parse timeout to retransmissions
+            // Parse timeout interval to retransmissions
             if (line.hasOption('t')) {
-                timeout = Integer.parseInt(line.getOptionValue('t'));
-                if (timeout <= 0 || timeout > 255000) {
+                interval = Integer.parseInt(line.getOptionValue('t'));
+                if (interval <= 0 || interval > 255000) {
                     throw new ParseException("Invalid timeout interval to retransmissions");
                 }
             }
@@ -152,6 +152,6 @@ public class Main {
             System.exit(1);
         }
 
-        new TFTPServer(port, localDir, retries, timeout, blksize, tsize);
+        new TFTPServer(port, localDir, retries, interval, blksize, tsize);
     }
 }
