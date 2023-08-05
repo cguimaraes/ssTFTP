@@ -48,7 +48,7 @@ import pt.cguimaraes.sstftp.message.TFTPMessage;
 import pt.cguimaraes.sstftp.message.WriteRequestMessage;
 import pt.cguimaraes.sstftp.socket.TFTPSocket;
 
-public class ServerSession {
+public class ServerSession implements Runnable {
 
     private TFTPSocket socket;
 
@@ -129,7 +129,8 @@ public class ServerSession {
             Logger.getGlobal().info("File not found");
         }
 
-        socket.run();
+        Thread t = new Thread(socket);
+        t.start();
     }
 
     // TFTP message handler for GET action
