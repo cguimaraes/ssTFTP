@@ -47,32 +47,36 @@ jobs:
 
     - name: Run GET and PUT operations with default behavior
       run: |
-           mv ./example-files/* .
-           java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 &
-           sleep 5
+          mv ./example-files/* .
+          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 &
+          sleep 5
 
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1024.txt -c localhost -p 55555
-           sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -c localhost -p 55555
-           sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -c localhost -p 55555
-           sleep 5
+          java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1024.txt -c localhost -p 55555
+          sleep 1
+          java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -c localhost -p 55555
+          sleep 1
+          java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -c localhost -p 55555
+          sleep 5
 
-           rm f1024.txt f1268.txt ovos_moles.jpg
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -c localhost -p 55555
-           sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -c localhost -p 55555
-           sleep 1
-           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -c localhost -p 55555
-           sleep 5
+          cmp --silent ./example-files/f1024.txt f1024.txt
+          cmp --silent ./example-files/f1268.txt f1268.txt
+          cmp --silent ./example-files/ovos_moles.jpg ovos_moles.jpg
+          rm f1024.txt f1268.txt ovos_moles.jpg
 
-           pkill -9 java
+          java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -c localhost -p 55555
+          sleep 1
+          java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -c localhost -p 55555
+          sleep 1
+          java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -c localhost -p 55555
+          sleep 5
+
+          pkill -9 java
 
     - name: Check results with default behavior
       run: |
-           cmp --silent ./example-files/f1024.txt f1024.txt
-           cmp --silent ./example-files/f1268.txt f1268.txt
-           cmp --silent ./example-files/ovos_moles.jpg ovos_moles.jpg
+          cmp --silent ./example-files/f1024.txt f1024.txt
+          cmp --silent ./example-files/f1268.txt f1268.txt
+          cmp --silent ./example-files/ovos_moles.jpg ovos_moles.jpg
 
   options:
     name: Running on ${{ matrix.os }}
@@ -100,7 +104,11 @@ jobs:
           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -c localhost -p 55555 -b 100
           sleep 5
 
+          cmp --silent ./example-files/f1024.txt f1024.txt
+          cmp --silent ./example-files/f1268.txt f1268.txt
+          cmp --silent ./example-files/ovos_moles.jpg ovos_moles.jpg
           rm f1024.txt f1268.txt ovos_moles.jpg
+
           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -c localhost -p 55555 -b 100
           sleep 1
           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -c localhost -p 55555 -b 512
@@ -125,18 +133,21 @@ jobs:
           sleep 1
           pkill -9 java
 
-          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 &
+          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -s 65535 &
           sleep 5
           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -c localhost -p 55555 -s
           sleep 1
           pkill -9 java
 
-          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -s 65535 &
+          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -s 1000000 &
           sleep 5
           java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -c localhost -p 55555
           sleep 1
           pkill -9 java
 
+          cmp --silent ./example-files/f1024.txt f1024.txt
+          cmp --silent ./example-files/f1268.txt f1268.txt
+          cmp --silent ./example-files/ovos_moles.jpg ovos_moles.jpg
           rm f1024.txt f1268.txt ovos_moles.jpg
 
           java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -s 65535 &
@@ -145,13 +156,13 @@ jobs:
           sleep 1
           pkill -9 java
 
-          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 &
+          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -s 65535 &
           sleep 5
           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -c localhost -p 55555 -s
           sleep 1
           pkill -9 java
 
-          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -s 65535 &
+          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -s 1000000 &
           sleep 5
           java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -c localhost -p 55555
           sleep 1
@@ -168,41 +179,44 @@ jobs:
     - name: Run GET and PUT operations with TFTP Timeout Interval Option (RFC 2348)
       run: |
           mv ./example-files/* .
-          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -i 3000 &
+          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -t 3000 &
           sleep 5
-          java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1024.txt -c localhost -p 55555 -i 3000
+          java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1024.txt -c localhost -p 55555 -t 3000
           sleep 1
           pkill -9 java
 
-          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -i 3000 &
+          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -t 3000 &
           sleep 5
-          java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -c localhost -p 55555 -i 2000
+          java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f f1268.txt -c localhost -p 55555 -t 2000
           sleep 1
           pkill -9 java
 
-          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -i 3000 &
+          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -t 3000 &
           sleep 5
-          java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -c localhost -p 55555 -i 4000
+          java -jar sstftp-client/target/sstftp-client-0.2.jar -a put -f ovos_moles.jpg -c localhost -p 55555 -t 4000
           sleep 1
           pkill -9 java
 
+          cmp --silent ./example-files/f1024.txt f1024.txt
+          cmp --silent ./example-files/f1268.txt f1268.txt
+          cmp --silent ./example-files/ovos_moles.jpg ovos_moles.jpg
           rm f1024.txt f1268.txt ovos_moles.jpg
 
-          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -i 3000 &
+          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -t 3000 &
           sleep 5
-          java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -c localhost -p 55555 -i 3000
+          java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1024.txt -c localhost -p 55555 -t 3000
           sleep 1
           pkill -9 java
 
-          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -i 3000 &
+          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -t 3000 &
           sleep 5
-          java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -c localhost -p 55555 -i 2000
+          java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f f1268.txt -c localhost -p 55555 -t 2000
           sleep 1
           pkill -9 java
 
-          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -s 65535 -i 3000 &
+          java -jar sstftp-server/target/sstftp-server-0.2.jar -d ./example-files -p 55555 -s 65535 -t 3000 &
           sleep 5
-          java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -c localhost -p 55555 -i 4000
+          java -jar sstftp-client/target/sstftp-client-0.2.jar -a get -f ovos_moles.jpg -c localhost -p 55555 -t 4000
           sleep 1
           pkill -9 java
 

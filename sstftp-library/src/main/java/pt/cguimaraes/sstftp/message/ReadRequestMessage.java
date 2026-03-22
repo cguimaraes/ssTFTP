@@ -2,9 +2,9 @@
 // Brief     : Read Request Message
 // Author(s) : Carlos Guimarães <carlos.em.guimaraes@gmail.com>
 // ----------------------------------------------------------------------------
-// ssTFTP - Open Trivial File Transfer Protocol
+// ssTFTP - Super Simple Trivial File Transfer Protocol
 //
-// Copyright (C) 2008-2013 Carlos Guimarães
+// Copyright (C) 2008-2026 Carlos Guimarães
 //
 // This file is part of ssTFTP.
 //
@@ -28,6 +28,7 @@ package pt.cguimaraes.sstftp.message;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.net.InetAddress;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
@@ -67,19 +68,19 @@ public class ReadRequestMessage extends TFTPMessage {
     public void toBytes(ByteArrayOutputStream stream) {
         super.toBytes(stream);
 
-        byte[] tmp = fileName.getBytes();
+        byte[] tmp = fileName.getBytes(StandardCharsets.US_ASCII);
         stream.write(tmp, 0, tmp.length);
         stream.write(0);
-        tmp = mode.getBytes();
+        tmp = mode.getBytes(StandardCharsets.US_ASCII);
         stream.write(tmp, 0, tmp.length);
         stream.write(0);
 
         for (Entry<String, String> entry : options.entrySet()) {
-            tmp = entry.getKey().getBytes();
+            tmp = entry.getKey().getBytes(StandardCharsets.US_ASCII);
             stream.write(tmp, 0, tmp.length);
             stream.write(0);
 
-            tmp = entry.getValue().getBytes();
+            tmp = entry.getValue().getBytes(StandardCharsets.US_ASCII);
             stream.write(tmp, 0, tmp.length);
             stream.write(0);
         }
@@ -89,31 +90,53 @@ public class ReadRequestMessage extends TFTPMessage {
         super.fromBytes(stream);
 
         StringBuilder strBuilder = new StringBuilder();
-        byte tmp;
-        while ((tmp = (byte) stream.read()) != 0x00) {
+        int tmp;
+
+        // Parse filename
+        while ((tmp = stream.read()) != -1 && tmp != 0x00) {
             strBuilder.append((char) tmp);
+        }
+        if (tmp == -1) {
+            throw new IllegalArgumentException("Invalid RRQ: missing null terminator after filename");
         }
         fileName = strBuilder.toString();
+        if (fileName.isEmpty()) {
+            throw new IllegalArgumentException("Invalid RRQ: filename cannot be empty");
+        }
 
+        // Parse mode
         strBuilder = new StringBuilder();
-        while ((tmp = (byte) stream.read()) != 0x00) {
+        while ((tmp = stream.read()) != -1 && tmp != 0x00) {
             strBuilder.append((char) tmp);
         }
+        if (tmp == -1) {
+            throw new IllegalArgumentException("Invalid RRQ: missing null terminator after mode");
+        }
         mode = strBuilder.toString();
+        if (mode.isEmpty()) {
+            throw new IllegalArgumentException("Invalid RRQ: mode cannot be empty");
+        }
 
+        // Parse options
         while (stream.available() > 0) {
             String opt;
             String value;
 
             strBuilder = new StringBuilder();
-            while ((tmp = (byte) stream.read()) != 0x00) {
+            while ((tmp = stream.read()) != -1 && tmp != 0x00) {
                 strBuilder.append((char) tmp);
             }
             opt = strBuilder.toString();
+            if (opt.isEmpty()) {
+                break;  // End of options
+            }
 
             strBuilder = new StringBuilder();
-            while ((tmp = (byte) stream.read()) != 0x00) {
+            while ((tmp = stream.read()) != -1 && tmp != 0x00) {
                 strBuilder.append((char) tmp);
+            }
+            if (tmp == -1) {
+                throw new IllegalArgumentException("Invalid RRQ: missing null terminator after option value");
             }
             value = strBuilder.toString();
 

@@ -2,9 +2,9 @@
 // Brief     : TFTP Server Session
 // Author(s) : Carlos Guimarães <carlos.em.guimaraes@gmail.com>
 // ----------------------------------------------------------------------------
-// ssTFTP - Open Trivial File Transfer Protocol
+// ssTFTP - Super Simple Trivial File Transfer Protocol
 //
-// Copyright (C) 2008-2013 Carlos Guimarães
+// Copyright (C) 2008-2026 Carlos Guimarães
 //
 // This file is part of ssTFTP.
 //
@@ -31,14 +31,21 @@ import java.io.RandomAccessFile;
 import java.lang.reflect.Method;
 import java.net.SocketException;
 import java.nio.channels.Channels;
-import java.util.Arrays;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map.Entry;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.apache.commons.net.io.FromNetASCIIOutputStream;
 import org.apache.commons.net.io.ToNetASCIIInputStream;
 
+import pt.cguimaraes.sstftp.TFTPAction;
+import pt.cguimaraes.sstftp.TFTPConstants;
+import pt.cguimaraes.sstftp.TFTPMode;
 import pt.cguimaraes.sstftp.message.AcknowledgeMessage;
 import pt.cguimaraes.sstftp.message.DataMessage;
 import pt.cguimaraes.sstftp.message.ErrorMessage;
@@ -50,6 +57,8 @@ import pt.cguimaraes.sstftp.socket.TFTPSocket;
 
 public class ServerSession implements Runnable {
 
+    private static final Logger LOGGER = Logger.getLogger(ServerSession.class.getName());
+
     private TFTPSocket socket;
 
     private int bSize;
@@ -57,14 +66,34 @@ public class ServerSession implements Runnable {
     private long fileSize;
     private long tSizeMax;
     private int opcode;
-    private String mode;
+    private TFTPMode mode;
     private HashMap<String, String> options;
 
     private RandomAccessFile file;
 
+    private Thread socketThread;
     private boolean sentLast = false;
     private boolean initialized = true;
 
+    /**
+     * Creates a server session for handling a TFTP file transfer request.
+     *
+     * Initializes the session with server configuration and request message.
+     * The session validates the request and prepares file resources.
+     *
+     * @param localDir the local server directory for file storage
+     * @param retries the number of retransmission attempts
+     * @param interval the timeout interval in seconds
+     * @param bSizeMax the maximum allowed block size in bytes
+     * @param tSizeMax the maximum allowed file transfer size in bytes (-1 for unlimited)
+     * @param msg the initial TFTP request message (RRQ or WRQ)
+     *
+     * @throws NoSuchMethodException if the handler method is not found
+     * @throws SecurityException if access to methods is denied
+     * @throws SocketException if the socket cannot be created
+     * @throws Exception if the request message type is invalid
+     * @throws NullPointerException if required parameters are null
+     */
     public ServerSession(String localDir, int retries, int interval, int bSizeMax, long tSizeMax, TFTPMessage msg)
             throws NoSuchMethodException, SecurityException, SocketException, Exception {
         // Initialize TFTP Socket
@@ -91,28 +120,33 @@ public class ServerSession implements Runnable {
 
         // Configure session
         this.bSizeMax = bSizeMax;
-        this.bSize = 512; // Default block size
+        this.bSize = TFTPConstants.DEFAULT_BLOCK_SIZE;
         this.tSizeMax = tSizeMax;
         this.fileSize = -1;
         try {
             switch (msg.getOpcode()) {
                 case TFTPMessage.RRQ: {
                     ReadRequestMessage msgRRQ = (ReadRequestMessage) msg;
-                    this.mode = msgRRQ.getMode();
+                    this.mode = TFTPMode.fromString(msgRRQ.getMode());
                     this.opcode = msgRRQ.getOpcode();
                     this.options = msgRRQ.getOptions();
 
-                    file = new RandomAccessFile(localDir + msgRRQ.getFileName(), "r");
+                    String filePath = validateAndNormalizePath(localDir, msgRRQ.getFileName());
+                    file = new RandomAccessFile(filePath, "r");
                     break;
                 }
 
                 case TFTPMessage.WRQ: {
                     WriteRequestMessage msgWRQ = (WriteRequestMessage) msg;
-                    this.mode = msgWRQ.getMode();
+                    this.mode = TFTPMode.fromString(msgWRQ.getMode());
                     this.opcode = msgWRQ.getOpcode();
                     this.options = msgWRQ.getOptions();
 
-                    file = new RandomAccessFile(localDir + msgWRQ.getFileName(), "rw");
+                    String filePath = validateAndNormalizePath(localDir, msgWRQ.getFileName());
+                    // Ensure parent directory exists for write operations
+                    Path filePathObj = Paths.get(filePath);
+                    Files.createDirectories(filePathObj.getParent());
+                    this.file = new RandomAccessFile(filePath, "rw");
                     break;
                 }
 
@@ -123,13 +157,21 @@ public class ServerSession implements Runnable {
             }
         } catch (FileNotFoundException e) {
             initialized = false;
+            if (this.file != null) {
+                try {
+                    this.file.close();
+                } catch (IOException ignored) {
+                    LOGGER.log(Level.WARNING, "Error closing file after FileNotFoundException", ignored);
+                }
+            }
             ErrorMessage msgError = new ErrorMessage(ErrorMessage.FILE_NOT_FOUND);
             socket.send(msgError);
 
-            Logger.getGlobal().info("File not found");
+            LOGGER.info("File not found");
         }
 
         Thread t = new Thread(socket);
+        this.socketThread = t;
         t.start();
     }
 
@@ -152,8 +194,8 @@ public class ServerSession implements Runnable {
                 ErrorMessage msgError = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
                 socket.send(msgError);
 
-                Logger.getGlobal().warning("Illegal TFTP Operation");
-                System.exit(1);
+                LOGGER.warning("Illegal TFTP Operation");
+                socket.close();
                 break;
             }
         }
@@ -178,8 +220,8 @@ public class ServerSession implements Runnable {
                 ErrorMessage msgError = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
                 socket.send(msgError);
 
-                Logger.getGlobal().warning("Illegal TFTP Operation");
-                System.exit(1);
+                LOGGER.warning("Illegal TFTP Operation");
+                socket.close();
                 break;
             }
         }
@@ -188,18 +230,18 @@ public class ServerSession implements Runnable {
     // Handle TFTP Data message: write data to file
     private void handleData(DataMessage dataMsg) {
         try {
-            if (mode.equals("octet")) {
+            if (mode == TFTPMode.OCTET) {
                 file.write(dataMsg.getData(), 0, dataMsg.getData().length);
-            } else if (mode.equals("netascii")) {
-                @SuppressWarnings("resource")
-                FromNetASCIIOutputStream is = new FromNetASCIIOutputStream(Channels.newOutputStream(file.getChannel()));
-                is.write(dataMsg.getData(), 0, dataMsg.getData().length);
+            } else if (mode == TFTPMode.NETASCII) {
+                try (FromNetASCIIOutputStream is = new FromNetASCIIOutputStream(Channels.newOutputStream(file.getChannel()))) {
+                    is.write(dataMsg.getData(), 0, dataMsg.getData().length);
+                }
             }
         } catch (IOException e) {
             ErrorMessage msgError = new ErrorMessage(ErrorMessage.ACCESS_VIOLATION);
             socket.send(msgError);
 
-            Logger.getGlobal().warning("Cannot write on file");
+            LOGGER.log(Level.WARNING, "Cannot write on file", e);
             socket.close();
             return;
         }
@@ -210,14 +252,13 @@ public class ServerSession implements Runnable {
 
         // If data length lower than block size, transfer is complete
         if (dataMsg.getData().length < bSize) {
-            Logger.getGlobal().info("Transfer complete");
+            LOGGER.info("Transfer complete");
             try {
                 if (fileSize != -1 && file.length() != fileSize) {
-                    Logger.getGlobal()
-                            .warning("File size is different from the transfer size reported by the TFTP Server.");
+                    LOGGER.warning("File size is different from the transfer size reported by the TFTP Server.");
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                LOGGER.log(Level.WARNING, "Error checking file size", e);
             }
 
             socket.close();
@@ -232,12 +273,12 @@ public class ServerSession implements Runnable {
         try {
             int n = -1;
 
-            if (mode.equals("octet")) {
+            if (mode == TFTPMode.OCTET) {
                 n = file.read(b);
-            } else if (mode.equals("netascii")) {
-                @SuppressWarnings("resource")
-                ToNetASCIIInputStream is = new ToNetASCIIInputStream(Channels.newInputStream(file.getChannel()));
-                n = is.read(b);
+            } else if (mode == TFTPMode.NETASCII) {
+                try (ToNetASCIIInputStream is = new ToNetASCIIInputStream(Channels.newInputStream(file.getChannel()))) {
+                    n = is.read(b);
+                }
             }
 
             // If data to send is lower than block size, transfer is complete
@@ -253,19 +294,24 @@ public class ServerSession implements Runnable {
                         n = 0;
                     }
                 } else {
-                    Logger.getGlobal().info("Transfer complete");
+                    LOGGER.info("Transfer complete");
                     socket.close();
                     return;
                 }
             }
 
-            DataMessage msgData = new DataMessage(ackMsg.getBlockNumber() + 1, Arrays.copyOfRange(b, 0, n));
+            int nextBlockNumber = (ackMsg.getBlockNumber() + 1) & 0xFFFF;
+            byte[] dataToSend = (n > 0) ? new byte[n] : new byte[0];
+            if (n > 0) {
+                System.arraycopy(b, 0, dataToSend, 0, n);
+            }
+            DataMessage msgData = new DataMessage(nextBlockNumber, dataToSend);
             socket.send(msgData);
         } catch (IOException e) {
             ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.ACCESS_VIOLATION);
             socket.send(errorMsg);
 
-            Logger.getGlobal().warning("Cannot read file");
+            LOGGER.warning("Cannot read file");
             socket.close();
             return;
         }
@@ -273,95 +319,158 @@ public class ServerSession implements Runnable {
 
     // Handle TFTP Error message
     private void handleError(ErrorMessage msgError) {
-        Logger.getGlobal().info("Error (" + msgError.getErrorCode() + "): " + msgError.getErrorMsg());
+        LOGGER.info("Error (" + msgError.getErrorCode() + "): " + msgError.getErrorMsg());
         socket.close();
         return;
     }
 
     // Start session that will handle the TFTP client request
     public void run() {
-        // Parse TFTP Options
-        for (Entry<String, String> entry : options.entrySet()) {
-            switch (entry.getKey()) {
-                case "blksize": {
-                    int tmp = Integer.parseInt(entry.getValue());
-                    if (bSizeMax == -1 || bSizeMax >= tmp)
-                        bSize = tmp;
-                    else {
-                        bSize = bSizeMax;
-                        entry.setValue(Integer.toString(bSize));
-                    }
-                    break;
-                }
-
-                case "tsize": {
-                    switch (opcode) {
-                        case TFTPMessage.RRQ: {
-                            try {
-                                entry.setValue(Long.toString(file.length()));
-                            } catch (IOException e) {
-                                e.printStackTrace();
+        try {
+            // Parse TFTP Options
+            Iterator<Entry<String, String>> iterator = options.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Entry<String, String> entry = iterator.next();
+                switch (entry.getKey()) {
+                    case "blksize": {
+                        try {
+                            int tmp = Integer.parseInt(entry.getValue());
+                            if (tmp < TFTPConstants.DEFAULT_BLOCK_SIZE || tmp > TFTPConstants.MAX_BLOCK_SIZE) {
+                                LOGGER.warning("Invalid block size: " + tmp + ", using maximum allowed");
+                                tmp = Math.min(tmp, TFTPConstants.MAX_BLOCK_SIZE);
                             }
-                            break;
+                            if (bSizeMax == -1 || bSizeMax >= tmp) {
+                                bSize = tmp;
+                            } else {
+                                bSize = bSizeMax;
+                                entry.setValue(Integer.toString(bSize));
+                            }
+                        } catch (NumberFormatException e) {
+                            LOGGER.warning("Invalid block size format: " + e.getMessage());
+                            iterator.remove();
                         }
+                        break;
+                    }
 
-                        case TFTPMessage.WRQ: {
-                            fileSize = Integer.parseInt(entry.getValue());
-                            if (tSizeMax != -1 && fileSize > tSizeMax) {
-                                Logger.getGlobal().warning("File to upload exceeds the maximum size allowed");
-                                ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.DISK_FULL_OR_ALLOCATION_EXCEEDED);
+                    case "tsize": {
+                        try {
+                            switch (opcode) {
+                                case TFTPMessage.RRQ: {
+                                    try {
+                                        entry.setValue(Long.toString(file.length()));
+                                    } catch (IOException e) {
+                                        LOGGER.log(Level.WARNING, "Error getting file length", e);
+                                    }
+                                    break;
+                                }
+
+                                case TFTPMessage.WRQ: {
+                                    fileSize = Long.parseLong(entry.getValue());
+                                    if (tSizeMax != -1 && fileSize > tSizeMax) {
+                                        LOGGER.warning("File to upload exceeds the maximum size allowed");
+                                        ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.DISK_FULL_OR_ALLOCATION_EXCEEDED);
+                                        socket.send(errorMsg);
+                                        socket.close();
+                                        return;
+                                    }
+                                    break;
+                                }
+                            }
+                        } catch (NumberFormatException e) {
+                            LOGGER.warning("Invalid transfer size format: " + e.getMessage());
+                            iterator.remove();
+                        }
+                        break;
+                    }
+
+                    case "interval": {
+                        try {
+                            int interval = Integer.parseInt(entry.getValue());
+                            if (interval >= TFTPConstants.MIN_TIMEOUT_INTERVAL && interval <= TFTPConstants.MAX_TIMEOUT_INTERVAL) {
+                                this.socket.setTimeout(interval * 1000);
+                            } else {
+                                LOGGER.warning("Received timeout interval option is out of accepted range");
+                                ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
                                 socket.send(errorMsg);
-
                                 socket.close();
                                 return;
                             }
-                            break;
+                        } catch (NumberFormatException e) {
+                            LOGGER.warning("Invalid timeout interval format: " + e.getMessage());
+                            iterator.remove();
                         }
-                    }
-                    break;
-                }
-
-                case "interval": {
-                    int interval = Integer.parseInt(entry.getValue());
-                    if (interval > 0 && interval < 256) { // Always accept interval request by client if in valid range
-                        this.socket.setTimeout(interval * 1000);
-                    } else {
-                        Logger.getGlobal().warning("Received timeout interval option is out of accepted range");
-                        ErrorMessage errorMsg = new ErrorMessage(ErrorMessage.ILLEGAL_TFTP_OPERATION);
-                        socket.send(errorMsg);
-
-                        socket.close();
-                        return;
+                        break;
                     }
 
-                    break;
+                    default:
+                        // Option not supported
+                        iterator.remove();
                 }
-
-                default:
-                    // Option not supported
-                    options.remove(entry.getKey());
             }
-        }
 
-        if (options.size() != 0) {
-            OptionAcknowledgeMessage msgOAck = new OptionAcknowledgeMessage(options);
-            socket.send(msgOAck);
+            if (options.size() != 0) {
+                OptionAcknowledgeMessage msgOAck = new OptionAcknowledgeMessage(options);
+                socket.send(msgOAck);
 
-            return;
-        } else {
-            // Response if no options to acknowledge
-            if (opcode == TFTPMessage.RRQ) {
-                // Fake acknowledge message to start sending the file
-                AcknowledgeMessage msgAck = new AcknowledgeMessage(0);
-                handleAcknowledge(msgAck);
-            } else if (opcode == TFTPMessage.WRQ) {
-                AcknowledgeMessage msgAck = new AcknowledgeMessage(0);
-                socket.send(msgAck);
+                return;
+            } else {
+                // Response if no options to acknowledge
+                if (opcode == TFTPMessage.RRQ) {
+                    // Fake acknowledge message to start sending the file
+                    AcknowledgeMessage msgAck = new AcknowledgeMessage(0);
+                    handleAcknowledge(msgAck);
+                } else if (opcode == TFTPMessage.WRQ) {
+                    AcknowledgeMessage msgAck = new AcknowledgeMessage(0);
+                    socket.send(msgAck);
+                }
+            }
+        } finally {
+            // Wait for socket to complete processing before closing file
+            if (socketThread != null) {
+                try {
+                    socketThread.join();
+                } catch (InterruptedException e) {
+                    LOGGER.log(Level.WARNING, "Interrupted waiting for socket thread to close", e);
+                }
+            }
+
+            // Ensure file is always closed
+            if (file != null) {
+                try {
+                    file.close();
+                } catch (IOException e) {
+                    LOGGER.log(Level.WARNING, "Error closing file", e);
+                }
             }
         }
     }
 
     boolean isInitialized() {
         return initialized;
+    }
+
+    /**
+     * Validates and normalizes a file path to prevent directory traversal attacks.
+     * Ensures the resolved file is within the allowed directory.
+     *
+     * @param baseDir the base directory (server root)
+     * @param fileName the requested file name
+     * @return the normalized absolute file path
+     * @throws FileNotFoundException if the path attempts to escape the base directory
+     */
+    private String validateAndNormalizePath(String baseDir, String fileName) throws FileNotFoundException {
+        try {
+            Path basePath = Paths.get(baseDir).toAbsolutePath().normalize();
+            Path filePath = basePath.resolve(fileName).normalize();
+
+            // Ensure the resolved path is within the base directory
+            if (!filePath.startsWith(basePath)) {
+                throw new FileNotFoundException("Access denied: path traversal attempt detected");
+            }
+
+            return filePath.toString();
+        } catch (Exception e) {
+            throw new FileNotFoundException("Invalid file path: " + e.getMessage());
+        }
     }
 }

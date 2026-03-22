@@ -2,9 +2,9 @@
 // Brief     : Acknowledge Message
 // Author(s) : Carlos Guimarães <carlos.em.guimaraes@gmail.com>
 // ----------------------------------------------------------------------------
-// ssTFTP - Open Trivial File Transfer Protocol
+// ssTFTP - Super Simple Trivial File Transfer Protocol
 //
-// Copyright (C) 2008-2013 Carlos Guimarães
+// Copyright (C) 2008-2026 Carlos Guimarães
 //
 // This file is part of ssTFTP.
 //
@@ -28,6 +28,7 @@ package pt.cguimaraes.sstftp.message;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.net.InetAddress;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
@@ -57,11 +58,11 @@ public class OptionAcknowledgeMessage extends TFTPMessage {
 
         byte[] tmp;
         for (Entry<String, String> entry : options.entrySet()) {
-            tmp = entry.getKey().getBytes();
+            tmp = entry.getKey().getBytes(StandardCharsets.US_ASCII);
             stream.write(tmp, 0, tmp.length);
             stream.write(0);
 
-            tmp = entry.getValue().getBytes();
+            tmp = entry.getValue().getBytes(StandardCharsets.US_ASCII);
             stream.write(tmp, 0, tmp.length);
             stream.write(0);
         }
@@ -70,24 +71,28 @@ public class OptionAcknowledgeMessage extends TFTPMessage {
     public void fromBytes(ByteArrayInputStream stream) {
         super.fromBytes(stream);
 
-        byte tmp;
-        StringBuilder strBuilder = new StringBuilder();
-
         while (stream.available() > 0) {
-            String opt;
-            String value;
+            int optByte;
+            StringBuilder optBuilder = new StringBuilder();
 
-            strBuilder = new StringBuilder();
-            while ((tmp = (byte) stream.read()) != 0x00) {
-                strBuilder.append((char) tmp);
+            // Read option name
+            while ((optByte = stream.read()) != -1 && optByte != 0x00) {
+                optBuilder.append((char) optByte);
             }
-            opt = strBuilder.toString();
+            if (optByte == -1) {
+                break;  // Premature EOF
+            }
+            String opt = optBuilder.toString();
 
-            strBuilder = new StringBuilder();
-            while ((tmp = (byte) stream.read()) != 0x00) {
-                strBuilder.append((char) tmp);
+            // Read option value
+            StringBuilder valBuilder = new StringBuilder();
+            while ((optByte = stream.read()) != -1 && optByte != 0x00) {
+                valBuilder.append((char) optByte);
             }
-            value = strBuilder.toString();
+            if (optByte == -1) {
+                throw new IllegalArgumentException("Invalid OACK: incomplete option pair (missing value)");
+            }
+            String value = valBuilder.toString();
 
             options.put(opt, value);
         }

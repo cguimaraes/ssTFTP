@@ -2,9 +2,9 @@
 // Brief     : TFTP Message
 // Author(s) : Carlos Guimarães <carlos.em.guimaraes@gmail.com>
 // ----------------------------------------------------------------------------
-// ssTFTP - Open Trivial File Transfer Protocol
+// ssTFTP - Super Simple Trivial File Transfer Protocol
 //
-// Copyright (C) 2008-2013 Carlos Guimarães
+// Copyright (C) 2008-2026 Carlos Guimarães
 //
 // This file is part of ssTFTP.
 //

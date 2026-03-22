@@ -2,9 +2,9 @@
 // Brief     : Data Message
 // Author(s) : Carlos Guimarães <carlos.em.guimaraes@gmail.com>
 // ----------------------------------------------------------------------------
-// ssTFTP - Open Trivial File Transfer Protocol
+// ssTFTP - Super Simple Trivial File Transfer Protocol
 //
-// Copyright (C) 2008-2013 Carlos Guimarães
+// Copyright (C) 2008-2026 Carlos Guimarães
 //
 // This file is part of ssTFTP.
 //
@@ -28,6 +28,7 @@ package pt.cguimaraes.sstftp.message;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.net.InetAddress;
+import java.nio.charset.StandardCharsets;
 
 public class DataMessage extends TFTPMessage {
 
@@ -56,15 +57,29 @@ public class DataMessage extends TFTPMessage {
         super.toBytes(stream);
         stream.write((byte) ((blockNumber & 0xFF00) >> 8));
         stream.write((byte) (blockNumber & 0x00FF));
-        stream.write(data, 0, data.length);
+        if (data != null && data.length > 0) {
+            stream.write(data, 0, data.length);
+        }
     }
 
     public void fromBytes(ByteArrayInputStream stream) {
         super.fromBytes(stream);
-        blockNumber = (stream.read() << 8) | stream.read();
-        data = new byte[stream.available()];
-        for (int i = 0; stream.available() > 0; ++i) {
-            data[i] = (byte) stream.read();
+        int highByte = stream.read();
+        int lowByte = stream.read();
+        if (highByte == -1 || lowByte == -1) {
+            throw new IllegalArgumentException("Invalid DATA message: incomplete block number");
+        }
+        blockNumber = ((highByte & 0xFF) << 8) | (lowByte & 0xFF);
+
+        int availableBytes = stream.available();
+        if (availableBytes > 0) {
+            data = new byte[availableBytes];
+            int bytesRead = stream.read(data, 0, availableBytes);
+            if (bytesRead != availableBytes) {
+                throw new IllegalArgumentException("Invalid DATA message: failed to read all data");
+            }
+        } else {
+            data = new byte[0];
         }
     }
 

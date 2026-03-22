@@ -58,8 +58,8 @@ After that you can create a pull request in
 
 Contributor list
 ----------------
-	Carlos Guimarães <carlos.em.guimaraes@gmail.com>
+    Carlos Guimarães <carlos.em.guimaraes@gmail.com>
 
 External Contributors:
 
-	You can be the first one :)
+    You can be the first one :)

@@ -5,8 +5,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apk upgrade --no-cache && \
     apk add git --no-cache
 
-RUN git clone https://github.com/cguimaraes/ssTFTP.git
-WORKDIR /ssTFTP/
+RUN mkdir -p /ssTFTP/
+COPY . /ssTFTP/
 
+WORKDIR /ssTFTP/
 RUN mvn clean install
 

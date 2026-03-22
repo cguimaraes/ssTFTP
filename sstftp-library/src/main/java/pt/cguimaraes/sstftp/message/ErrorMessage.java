@@ -2,9 +2,9 @@
 // Brief     : Error Message
 // Author(s) : Carlos Guimarães <carlos.em.guimaraes@gmail.com>
 // ----------------------------------------------------------------------------
-// ssTFTP - Open Trivial File Transfer Protocol
+// ssTFTP - Super Simple Trivial File Transfer Protocol
 //
-// Copyright (C) 2008-2013 Carlos Guimarães
+// Copyright (C) 2008-2026 Carlos Guimarães
 //
 // This file is part of ssTFTP.
 //
@@ -28,6 +28,7 @@ package pt.cguimaraes.sstftp.message;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.net.InetAddress;
+import java.nio.charset.StandardCharsets;
 
 public class ErrorMessage extends TFTPMessage {
 
@@ -82,7 +83,7 @@ public class ErrorMessage extends TFTPMessage {
         stream.write((byte) ((errorCode & 0xFF00) >> 8));
         stream.write((byte) (errorCode & 0x00FF));
 
-        byte[] tmp = errorMsg.getBytes();
+        byte[] tmp = errorMsg.getBytes(StandardCharsets.US_ASCII);
         stream.write(tmp, 0, tmp.length);
         stream.write(0);
     }
@@ -90,12 +91,20 @@ public class ErrorMessage extends TFTPMessage {
     public void fromBytes(ByteArrayInputStream stream) {
         super.fromBytes(stream);
 
-        errorCode = (stream.read() << 8) | stream.read();
+        int highByte = stream.read();
+        int lowByte = stream.read();
+        if (highByte == -1 || lowByte == -1) {
+            throw new IllegalArgumentException("Invalid ERROR message: incomplete error code");
+        }
+        errorCode = ((highByte & 0xFF) << 8) | (lowByte & 0xFF);
 
         StringBuilder strBuilder = new StringBuilder();
-        byte tmp;
-        while ((tmp = (byte) stream.read()) != 0x00) {
+        int tmp;
+        while ((tmp = stream.read()) != -1 && tmp != 0x00) {
             strBuilder.append((char) tmp);
+        }
+        if (tmp == -1) {
+            throw new IllegalArgumentException("Invalid ERROR message: missing null terminator");
         }
         errorMsg = strBuilder.toString();
     }

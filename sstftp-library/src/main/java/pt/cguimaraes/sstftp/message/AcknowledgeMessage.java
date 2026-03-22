@@ -2,9 +2,9 @@
 // Brief     : Acknowledge Message
 // Author(s) : Carlos Guimarães <carlos.em.guimaraes@gmail.com>
 // ----------------------------------------------------------------------------
-// ssTFTP - Open Trivial File Transfer Protocol
+// ssTFTP - Super Simple Trivial File Transfer Protocol
 //
-// Copyright (C) 2008-2013 Carlos Guimarães
+// Copyright (C) 2008-2026 Carlos Guimarães
 //
 // This file is part of ssTFTP.
 //
@@ -29,6 +29,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.net.InetAddress;
 
+import pt.cguimaraes.sstftp.TFTPConstants;
+
 public class AcknowledgeMessage extends TFTPMessage {
 
     private int blockNumber;
@@ -51,13 +53,14 @@ public class AcknowledgeMessage extends TFTPMessage {
 
     public void toBytes(ByteArrayOutputStream stream) {
         super.toBytes(stream);
-        stream.write((byte) ((blockNumber & 0xFF00) >> 8));
-        stream.write((byte) (blockNumber & 0x00FF));
+        stream.write((byte) ((blockNumber & 0xFF00) >> TFTPConstants.BYTE_SHIFT));
+        stream.write((byte) (blockNumber & TFTPConstants.BYTE_MASK));
     }
 
     public void fromBytes(ByteArrayInputStream stream) {
         super.fromBytes(stream);
-        blockNumber = (stream.read() << 8) | stream.read();
+        blockNumber = ((stream.read() & TFTPConstants.BYTE_MASK) << TFTPConstants.BYTE_SHIFT) |
+                     (stream.read() & TFTPConstants.BYTE_MASK);
     }
 
     public int getBlockNumber() {
