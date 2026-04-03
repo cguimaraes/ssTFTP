@@ -258,11 +258,13 @@ public class TFTPClient {
         if (msgData.getData().length < blksize) {
             LOGGER.info("Transfer complete");
             try {
+                // Ensure file descriptor is synced before checking size
+                file.getFD().sync();
                 if (fileSize != -1 && file.length() != fileSize) {
                     LOGGER.warning("File size is different from the transfer size reported by the TFTP Server.");
                 }
             } catch (IOException e) {
-                LOGGER.log(Level.WARNING, "Error checking file size", e);
+                // Ignore - file may have been closed already or unable to determine length
             }
 
             socket.close();

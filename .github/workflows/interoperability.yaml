@@ -40,7 +40,7 @@ jobs:
       matrix:
         os: [macos-latest]
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Build
       run: mvn clean install
@@ -194,7 +194,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Install dependencies
       run: sudo apt install tftpd-hpa
@@ -338,3 +338,83 @@ jobs:
            cmp --silent /srv/tftp/f1268.txt f1268.txt
            cmp --silent /srv/tftp/ovos_moles.jpg ovos_moles.jpg
            rm -rf /srv/tftp/*
+  # tftp-hpa-interop:
+  #   name: Interoperability Test with tftp-hpa
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v4
+
+  #   - name: Set up Java
+  #     uses: actions/setup-java@v4
+  #     with:
+  #       distribution: 'temurin'
+  #       java-version: '11'
+
+  #   - name: Build ssTFTP
+  #     run: mvn clean install
+
+  #   - name: Run tftp-hpa Interoperability Tests
+  #     run: |
+  #       chmod +x test-scripts/test_interop_tftp_hpa.sh
+  #       bash test-scripts/test_interop_tftp_hpa.sh
+
+  #   - name: Upload tftp-hpa test logs
+  #     if: always()
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: tftp-hpa-test-logs
+  #       path: /tmp/tftp-hpa-test.log
+
+  atftp-interop:
+    name: Interoperability Test with atftp
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+
+    - name: Build ssTFTP
+      run: mvn clean install
+
+    - name: Run atftp Interoperability Tests
+      run: |
+        chmod +x test-scripts/test_interop_atftp.sh
+        bash test-scripts/test_interop_atftp.sh
+
+    - name: Upload atftp test logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: atftp-test-logs
+        path: /tmp/atftp-test.log
+
+  # openbsd-tftpd-interop:
+  #   name: Interoperability Test with OpenBSD tftpd
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v4
+
+  #   - name: Set up Java
+  #     uses: actions/setup-java@v4
+  #     with:
+  #       distribution: 'temurin'
+  #       java-version: '11'
+
+  #   - name: Build ssTFTP
+  #     run: mvn clean install
+
+  #   - name: Run OpenBSD tftpd Interoperability Tests
+  #     run: |
+  #       chmod +x test-scripts/test_interop_openbsd.sh
+  #       bash test-scripts/test_interop_openbsd.sh
+
+  #   - name: Upload OpenBSD tftpd test logs
+  #     if: always()
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: openbsd-tftpd-test-logs
+  #       path: /tmp/openbsd-test.log
